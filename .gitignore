@@ -1,0 +1,19 @@
+# Python __pycache__ directories
+__pycache__/
+
+# Python __pycache__ in all directories
+**/__pycache__/
+
+# Python *.pyc files
+*.pyc
+
+# ignore temp
+temp/
+
+sismogrammes/
+
+sismogrammes/sismogrammes_save/
+
+mis_de_cote/
+
+aside/
