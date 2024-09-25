@@ -1,79 +1,144 @@
-import datetime as dt
-from scipy.signal import spectrogram
-import numpy as np
-import obspy
-import pandas as pd
-from scipy.stats import t
+"""
+ESEC catalog computations libraries.
+
+This library contains various functions to perform calculations.
+"""
+
 import datetime
+import datetime as dt
 from datetime import timedelta
+import glob
 from matplotlib import lines as mlines
 import matplotlib.pyplot as plt
-import glob
+import numpy as np
 import os
-
-import analysis
+import pandas as pd
+from scipy.stats import t
 
 from tqdm.notebook import tqdm
 tqdm.pandas()
 
 
+def remove_outliers_in_catalog(catalog, catalog_column, subset):
+    """
+    Removes outliers from the ESEC based on the interquartile range method.
 
-def compute_waveform_with_distance(trace, scale):
-    waveform = trace - np.mean(trace)
-    waveform /= np.max(np.abs(waveform))
-    waveform *= scale
+    Parameters:
+    ------------
+    catalog : pandas.DataFrame
+        ESEC from which outliers are to be removed.
+    catalog_column : pandas.Series
+        The column in the ESEC to be used for outlier detection.
+    subset : list
+        A list containing the subset columns for which missing values are to be considered.
 
-    return waveform
+    Returns:
+    ---------
+    pandas.DataFrame
+        The new ESEC with outliers removed.
+    """
+
+    ## Calculate the first and third quartiles
+    Q1 = catalog_column.quantile(0.25)
+    Q3 = catalog_column.quantile(0.75)
+    IQR = Q3 - Q1
+
+    ## Determine the bounds for outlier detection
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    print(f"Lower bound for {subset[1]}: {lower_bound}")
+    print(f"Upper bound for {subset[1]}: {upper_bound}")
+
+    ## Identify outliers
+    outliers = catalog[(catalog_column < lower_bound) | (catalog_column > upper_bound)]
+    print(f"Number of outliers in {subset[1]}:", outliers.shape[0])
+
+    ## Remove rows with missing values in the specified subset columns
+    ESEC_avalanches = catalog.dropna(subset=subset)
+
+    ## Remove outliers with the computed bounds
+    ESEC_avalanches_filtered = ESEC_avalanches[(catalog_column > lower_bound) & (catalog_column < upper_bound)]
+
+    return ESEC_avalanches_filtered
 
 
-def plot_waveform_with_distance2(ESEC_avalanches, trace, add_trace_color, trace_data, event_index, time, distance, ax, color = "k", lw = 0.2, rasterized=True):
-    start_time_real = datetime.datetime.strptime(ESEC_avalanches["starttime"][event_index], "%Y_%m_%d %H%M%S")
-    time_real = [start_time_real + timedelta(seconds=t) for t in time]
-    waveform = compute_waveform_with_distance(trace_data, 10)
-    ax.plot(time_real, waveform + distance, color=color, lw=lw, rasterized=rasterized)
+def confidence_bounds(X_fit, log_X, popt, pcov):
+    """
+    Calculates the confidence interval bounds for the fitted curve.
 
-    # if add_trace_color == True:
-    #     if trace == 14:
-    #         ax.plot(time_real, waveform + distance, color="orange", lw=lw, rasterized=rasterized)
-    #     if trace == 76:
-    #         ax.plot(time_real, waveform + distance, color="orange", lw=lw, rasterized=rasterized)
+    Parameters:
+    ------------
+    X_fit : numpy.ndarray
+        X values used to plot the fitted curve (in figures.plot_fitted_curve).
+    log_X : numpy.ndarray
+        Log of the data of the X-axis (in figures.plot_fitted_curve).
+    popt : numpy.ndarray
+        Optimal parameters for the fitted model (in figures.plot_fitted_curve).
+    pcov : numpy.ndarray
+        Covariance matrix of the fitted parameters (in figures.plot_fitted_curve).
 
-    return time_real, waveform
+    Returns:
+    ---------
+    Y_fit_lower : numpy.ndarray
+        The lower bound of the fitted curve.
+    Y_fit_upper : numpy.ndarray
+        The upper bound of the fitted curve.
+    """
+    ## Calculate the standard error for each parameter
+    perr = np.sqrt(np.diag(pcov))
 
-def plot_waveform_with_distance(ESEC_avalanches, trace, add_trace_color, trace_data, event_index, time, distance, label1, label2, ax, color = "k", lw = 0.2, rasterized=True):
-    start_time_real = datetime.datetime.strptime(ESEC_avalanches["starttime"][event_index], "%Y_%m_%d %H%M%S")
-    time_real = [start_time_real + timedelta(seconds=t) for t in time]
-    waveform = compute_waveform_with_distance(trace_data, 10)
+    ## Calculate the t-statistic for a 90% confidence interval
+    t_val = t.ppf(0.95, len(log_X) - len(popt))
 
-    if label1 == True:
-        ax.plot(time_real, waveform + distance, color=color, lw=lw, rasterized=rasterized, label = "Signal détecté")
-        label1 = False
-    else:
-        ax.plot(time_real, waveform + distance, color=color, lw=lw, rasterized=rasterized)
+    ## Confidence interval (lower and upper bounds) for 'a' in the model
+    a_conf_interval = np.exp(popt[0] + t_val * perr[0] * np.array([-1, 1]))
 
-    if label2 == True:
-        if trace == 14:
-            ax.plot(time_real, waveform + distance, color="orange", lw=lw, rasterized=rasterized, label = "Fausse détection")
-        if trace == 76:
-            ax.plot(time_real, waveform + distance, color="orange", lw=lw, rasterized=rasterized)
-            label2 = False
+    ## Confidence interval (lower and upper bounds) for 'b' in the model
+    b_conf_interval = popt[1] + t_val * perr[1] * np.array([-1, 1])
 
-    return time_real, waveform, label1, label2
+    ## Calculate the upper and lower confidence bounds of the model
+    Y_fit_lower = a_conf_interval[0] * X_fit ** b_conf_interval[0]
+    Y_fit_upper = a_conf_interval[1] * X_fit ** b_conf_interval[1]
+
+    return Y_fit_lower, Y_fit_upper
 
 
 def compute_number_of_stations(ESEC_avalanches, print = False):
+    """
+    Computes the number of seismic stations for each event in the ESEC.
+
+    Parameters:
+    -----------
+    ESEC_avalanches : pandas.Dataframe
+        The ESEC.
+    print_output : bool
+        If True, prints the number of stations for each event.
+
+    Returns:
+    --------
+    ESEC_avalanches : pd.DataFrame
+        Updated ESEC with the number of stations for each event.
+    """
+    
+    ## Loop in all events in ESEC
     for numero_event in tqdm(ESEC_avalanches["numero"], total=len(ESEC_avalanches)):
+
+        ## Load the inventory
         inventory = ESEC_avalanches["inventory"][numero_event]
 
+        ## Initializes a list to count the number of stations per event
         num_stations = []
 
-        if len(inventory) > 0: #len(inventory) give network len
+        ## If the inventory is not empty, count the number of stations
+        if len(inventory) > 0:
             for i in range(len(inventory.networks)):
                 num_stations.append(len(inventory.networks[i].stations))
 
+            ## Print the number of stations if requested
             if print == True:
                 print("The number of stations is", sum(num_stations), "for event", str(numero_event))
 
+            ## Add the number of stations in the column 'Number of stations' per event
             ESEC_avalanches.at[numero_event, 'Number of stations'] = sum(num_stations)
 
         else:
@@ -83,97 +148,58 @@ def compute_number_of_stations(ESEC_avalanches, print = False):
     return ESEC_avalanches
 
 
-def remove_outliers_in_catalog(catalog, catalog_column, subset):
-    # Outlier detection via interquartile range (IQR)
-    Q1 = catalog_column.quantile(0.25)
-    Q3 = catalog_column.quantile(0.75)
-    IQR = Q3 - Q1
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
+def compute_waveform_with_distance(trace, scale):
+    """
+    Normalize the waveform and scale it for plotting with distance.
 
-    print(f"Lower bound for {subset[1]}: {lower_bound}, Upper bound for {subset[1]}: {upper_bound}")
+    Parameters
+    ----------
+    trace : numpy.ndarray
+        The seismic trace.
+    scale : float
+        Scaling factor for the waveform to control its vertical offset when plotting.
 
-    outliers = catalog[(catalog_column < lower_bound) | (catalog_column > upper_bound)]
+    Returns
+    -------
+    numpy.ndarray
+        The scaled and normalized waveform data.
+    """
+    waveform = trace - np.mean(trace)     ## Center the waveform
+    waveform /= np.max(np.abs(waveform))  ## Normalize the waveform
+    waveform *= scale                     ## Scale the waveform
 
-    print(f"Number of outliers in {subset[1]}:", outliers.shape[0])
-
-    ESEC_avalanches = catalog.dropna(subset=subset)
-    ESEC_avalanches_filtered = ESEC_avalanches[(catalog_column > lower_bound) & (catalog_column < upper_bound)]
-
-    return ESEC_avalanches_filtered
-
-
-def confidence_bounds(X_fit, log_X, popt, pcov):
-    # Calculate the standard error (square root of the diagonals of the covariance matrix)
-    perr = np.sqrt(np.diag(pcov))
-
-    # Calculate the t statistic for a 90% confidence interval assuming a large sample size
-    t_val = t.ppf(0.95, len(log_X) - len(popt))  # 0.975 for 95% CI, adjusting df for number of parameters
-    # t_val = quantile 0.90
-
-    # Calculate confidence interval bounds for the parameters
-    a_conf_interval = np.exp(popt[0] + t_val * perr[0] * np.array([-1, 1])) # Pas compris :( ###############################################
-    b_conf_interval = popt[1] + t_val * perr[1] * np.array([-1, 1]) # Pas compris :( ###############################################
-
-    # Upper and lower confidence bounds of the fit
-    Y_fit_lower = a_conf_interval[0] * X_fit ** b_conf_interval[0]
-    Y_fit_upper = a_conf_interval[1] * X_fit ** b_conf_interval[1]
-
-    return Y_fit_lower, Y_fit_upper
-
-
-def compute_h_lower_upper(ESEC_original, X, low, high, catalog_without_incertainties, points_y, DX_fit_lower, DX_fit_upper, volumes_fit, catalog_filtered, ax, number):
-    # List to store the first and last values of each line
-    #line_values = []
-
-    # Create a new column in dfi for the determined uncertainty
-    catalog_filtered['determined_uncertainty'] = np.nan
-
-    # Plot horizontal lines connecting each point with DV_fit_lower and DV_fit_upper
-    for index, (h, y) in enumerate(zip(catalog_without_incertainties[X], points_y)):
-        h_lower = np.interp(y, DX_fit_lower, volumes_fit)
-        h_upper = np.interp(y, DX_fit_upper, volumes_fit)
-        h_upper = h_upper
-        h_lower = h_lower
-        
-        if index == 0:
-            ax[number].plot([h_lower, h_upper], [y, y], 'b', alpha=0.2, label="Incertitudes estimées")
-        else:
-            ax[number].plot([h_lower, h_upper], [y, y], 'b', alpha=0.2)
-        
-        # Store the first and last values of the line
-        #line_values.append(((h_lower, y), (h_upper, y)))
-        
-        # Get the original index in the "avalanche" DataFrame
-        original_index = catalog_without_incertainties.index[index]
-        
-        # Assign the uncertainty values to the corresponding values in the "avalanche" DataFrame
-        ESEC_original.at[original_index, low] = h_lower
-        ESEC_original.at[original_index, high] = h_upper
-
-        # Calculate the determined uncertainty and assign it to the new column
-        ESEC_original.at[original_index, 'determined_uncertainty'] = "True"
-
-    return ESEC_original#, line_values
-
-
-def conversion_du_temps_du_catalogue(trace, start_time_string, add_time):
-    start_time = dt.datetime.strptime(start_time_string, '%Y_%m_%d %H%M%S')
-    start_time_seconds = (start_time - trace.stats.starttime.datetime).total_seconds()
-    start_time_event_shifted = start_time_seconds + add_time
-
-    return start_time_event_shifted
+    return waveform
 
 
 def create_detection_dataframe(ESEC_avalanches, event_index, trimmed_time_starttime, trimmed_time_endtime, distance_all_trace):
-    df = pd.DataFrame({'start_time': trimmed_time_starttime, 'end_time': trimmed_time_endtime, 'distance': distance_all_trace})
-    df = df.sort_values('distance') #sort by distance
-    df = df.reset_index(drop=True) #reset index
-    df['detection'] = df['start_time'].apply(lambda x: False if np.isnan(x) else True) #add true if detection is possible. add falsi is detection is not possible
-    df['duration'] = df['end_time'] - df['start_time']
+    """
+    Creates a DataFrame for detection results and visualizes detections.
 
+    Parameters:
+    -----------
+        ESEC_avalanches : pd.DataFrame 
+    DataFrame containing avalanche event data.
+        event_index : int
+    Index of the event to analyze.
+        trimmed_time_starttime : list
+    List of detection start times.
+        trimmed_time_endtime : list
+    List of detection end times.
+        distance_all_trace : list
+    List of distances for each trace.
+    """
+
+    ## Create DataFrame with the start and end time of the detected method and the distance of the stations
+    df = pd.DataFrame({'start_time': trimmed_time_starttime, 'end_time': trimmed_time_endtime, 'distance': distance_all_trace})
+    df = df.sort_values('distance') ## Sort by distance
+    df = df.reset_index(drop=True) ## Reset index
+    df['detection'] = df['start_time'].apply(lambda x: False if np.isnan(x) else True) ## In a new column named "detection", add True if detection is possible. Add False if detection is not possible
+    df['duration'] = df['end_time'] - df['start_time'] ## Compute the duration of the event using the detected method
+
+    ## Extract the volume of the event
     volume = [ESEC_avalanches["volume"][event_index]]
 
+    ## Create a figure to see the result
     plt.figure(figsize=(10, 10), dpi=300)
 
     count_detection = 0
@@ -187,14 +213,62 @@ def create_detection_dataframe(ESEC_avalanches, event_index, trimmed_time_startt
             plt.scatter(volume, df["distance"][i], c='red', marker='x', s=40)
             count_non_detection += 1
 
-    detection_handle = mlines.Line2D([], [], color='blue', marker='o', linestyle='None', markersize=3, label='détection (' + str(count_detection) + ')')
-    no_detection_handle = mlines.Line2D([], [], color='red', marker='x', linestyle='None', markersize=3, label='Mauvaise/absence de détection (' + str(count_non_detection) + ')')
+    detection_handle = mlines.Line2D([], [], color='blue', marker='o', linestyle='None', markersize=3, label='Detection (' + str(count_detection) + ')')
+    no_detection_handle = mlines.Line2D([], [], color='red', marker='x', linestyle='None', markersize=3, label='Bad/no detection (' + str(count_non_detection) + ')')
 
     plt.legend(handles=[detection_handle, no_detection_handle])
-
-    plt.xlabel(r"Volume ($m^3$)")
-    plt.ylabel("Distance de la station à l'avalanche (km)")
+    plt.xlabel(r"Volume [$\mathrm{m^3}$]")
+    plt.ylabel("Distance from station to avalanche [km]")
     plt.ylim(0, 600)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def conversion_du_temps_du_catalogue(trace, start_time_string, add_time):
+    start_time = dt.datetime.strptime(start_time_string, '%Y_%m_%d %H%M%S')
+    start_time_seconds = (start_time - trace.stats.starttime.datetime).total_seconds()
+    start_time_event_shifted = start_time_seconds + add_time
+
+    return start_time_event_shifted
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def moyenne_glissante(f, shanon_index, ax, window_size = 40):

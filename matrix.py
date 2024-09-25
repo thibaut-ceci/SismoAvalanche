@@ -1,20 +1,37 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 
+def correlation_matrix(data, labels, annotate=True):
+    """
+    Computes and plots the correlation matrix of multiple columns in ESEC.
 
-def correlation_matrix(data, label, print_data=False):
-    # Compute correlation matrix
+    Parameters:
+    ------------
+    data : pandas.DataFrame
+        The columns from the ESEC.
+    labels : list of str
+        List of column labels to use for x and y axes.
+    annotate : bool
+        If True, annotates the heatmap with the correlation coefficients.
+    """
+    ## Compute the correlation matrix
     corr_matrix = data.corr()
 
-    plt.imshow(corr_matrix, cmap='hot', interpolation='nearest')
-    plt.colorbar(label="Corrélation")
+    ## Display it
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(corr_matrix, annot=annotate, cmap='coolwarm', xticklabels=labels, yticklabels=labels, cbar_kws={'label': 'Correlation'}, square=True)
 
-    plt.xticks(range(data.shape[1]), label, rotation=45)
-    plt.yticks(range(data.shape[1]), label)
+    plt.xticks(rotation=45, ha='right')
+    plt.yticks(rotation=0)
+    plt.tight_layout()
 
-    #Print the correlaton matrix for see the values
-    if print_data == True:
-        print(corr_matrix)
+    plt.show()
+
+
+
+
+
 
 
 def remove_fig(fig, axs):

@@ -2,14 +2,14 @@ import covseisnet as csn
 import matplotlib.pyplot as plt
 import obspy
 import figures
-import analysis
+import aside.analysis2 as analysis2
 import computations as cp
 
 import numpy as np
 
 from tqdm.notebook import tqdm
 
-import analysis
+import aside.analysis2 as analysis2
 
 tqdm.pandas()
 
@@ -85,16 +85,16 @@ def entropy(ESEC_avalanches, stream_csn, ws0, av0, ax, curve_params, event_index
     #Moyenne glissante sur f et shanon_index
     cp.moyenne_glissante(f, shanon_index, ax, window_size = 40)
 
-    split_freq = analysis.find_split_frequency(f, shanon_index, min_freq=4.0, max_freq=10.0)
+    split_freq = analysis2.find_split_frequency(f, shanon_index, min_freq=4.0, max_freq=10.0)
 
     print("Valeur de la fréquence coin : ", split_freq)
 
     low_mask = f <= split_freq
     high_mask = f > split_freq
 
-    low_freq, low_slope, low_intercept, low_shanon = analysis.ajustement_de_segment(low_mask, f, shanon_index, ax[2], color='green', label="Ajustement bas", pltplot = False)
+    low_freq, low_slope, low_intercept, low_shanon = analysis2.ajustement_de_segment(low_mask, f, shanon_index, ax[2], color='green', label="Ajustement bas", pltplot = False)
 
-    high_freq, high_slope, high_intercept, high_shanon = analysis.ajustement_de_segment(high_mask, f, shanon_index, ax[2], color='blue', label="Ajustement haut", pltplot = False)
+    high_freq, high_slope, high_intercept, high_shanon = analysis2.ajustement_de_segment(high_mask, f, shanon_index, ax[2], color='blue', label="Ajustement haut", pltplot = False)
         
     curve_params.append({'Event Index': event_index,'FC_ent': split_freq, 'Slope_BF_ent': low_slope,'Intercept_BF_ent': low_intercept,
                          'First Value_BF_ent': low_shanon[0],'FC_value_ent': low_shanon[-1],'Slope_HF_ent': high_slope,'Intercept_HF_ent': high_intercept,
@@ -113,7 +113,7 @@ def entropy_total(ESEC_avalanches, trim, ws0, av0, curve_params):
             stream = stream.sort(keys=["distance"])
             stream = stream.select(component="Z")
             stream.trim(starttime=stream[0].stats.starttime + trim[0], endtime=stream[0].stats.starttime + trim[1])
-            analysis.filtering(stream, freq_HP=9, freq_LP=0.5)
+            analysis2.filtering(stream, freq_HP=9, freq_LP=0.5)
             trace = stream[0]
 
             stream_csn = filter_stream_with_covseisnet(event_index, trim)

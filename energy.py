@@ -26,7 +26,7 @@ import numpy as np
 import scipy.stats
 from scipy.signal import spectrogram
 import computations as cp
-import analysis
+import aside.analysis2 as analysis2
 import figures
 
 
@@ -40,7 +40,7 @@ def spectres(trace):
     window_len = 20
     nperseg = int(window_len * fs)
 
-    frequencies, times, Sxx = spectrogram(data, fs=fs, nperseg=nperseg, noverlap=nperseg * 0.9, nfft=analysis.next2pow(nperseg), scaling="density", mode="psd")
+    frequencies, times, Sxx = spectrogram(data, fs=fs, nperseg=nperseg, noverlap=nperseg * 0.9, nfft=analysis2.next2pow(nperseg), scaling="density", mode="psd")
 
     frequency_band = (0.1, 2) ########## freq high and low to modify
     frequency_band_indices = np.where((frequencies > frequency_band[0]) & (frequencies < frequency_band[1]))[0]
