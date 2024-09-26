@@ -1,240 +1,307 @@
-import covseisnet as csn
-import matplotlib.pyplot as plt
-import obspy
-import figures
-import aside.analysis2 as analysis2
-import computations as cp
+"""
+ESEC computations entropy libraries.
 
-import numpy as np
+This library contains various functions to compute entropy of an avalanche.
+"""
 
 from tqdm.notebook import tqdm
 
-import aside.analysis2 as analysis2
+import covseisnet as csn
+import matplotlib.pyplot as plt
+import numpy as np
+import obspy
+
+import analysis
+import computations as cp
+import figures
 
 tqdm.pandas()
 
 
 def filter_stream_with_covseisnet(event_index, trim):
+    """
+    Filters a seismic stream for a specific event index and applies preprocessing steps.
+
+    Parameters:
+    -----------
+    event_index : int
+        Index of the event to analyze.
+    trim : list
+        List containing the start and end trim times.
+
+    Returns:
+    --------
+    stream : csn.arraystream.ArrayStream
+        Processed stream of seismic traces.
+    """
+
+    ## Load the stream, sort it by distance and keep only the component Z
     stream = obspy.read(f"sismogrammes/{event_index:03d}.pickle")
     stream = stream.sort(keys=["distance"])
     stream = stream.select(component="Z")
 
+    ## Keep only the trace between the source and 100 km away.
     stream = csn.arraystream.ArrayStream([trace for trace in stream if trace.stats.distance < 100])
+
+    ## Trim the stream
     stream.trim(starttime=stream[0].stats.starttime + trim[0], endtime=stream[0].stats.starttime + trim[1])
-    
     min_starttime = max(tr.stats.starttime for tr in stream)
     max_endtime = min(tr.stats.endtime for tr in stream)
     stream.trim(min_starttime, max_endtime)
+
+    ## Resample the stream to a uniform sampling rate of 40 Hz
     stream.resample(40)
 
+    ## Apply detrend, whitening and taper the stream
     stream.detrend("demean")
     stream.preprocess(window_duration_sec=300, epsilon=1e-10)
     stream.taper(max_percentage=0.01)
 
+    ## Trim again after the preprocess
     min_starttime = max(tr.stats.starttime for tr in stream)
     max_endtime = min(tr.stats.endtime for tr in stream)
     stream.trim(min_starttime, max_endtime)
 
-    # for tr in stream:
-    #     if tr.stats.npts > 24000:
-    #         print("NPTS :", tr.stats.npts)
-    #         stream.remove(tr)
-
-
+    ## Print the stream and the number of trace
     print(stream)
-
-    print("Nombre de traces dans le stream", len(stream))
+    print("Number of traces :", len(stream))
 
     return stream
 
 
-def get_entropy(stream, window_size=50, average=4):
-    """ Explique ce que chaque ligne fait et peut-être, explique-le en anglais """
+def compute_entropy(stream, window_size=50, average=4):
+    """
+    Calculates the entropy of the covariance matrix derived from a seismic stream.
+
+    Parameters:
+    -----------
+    stream : csn.arraystream.ArrayStream
+        The input seismic data stream.
+    window_size : int
+        The size of the window for calculating covariance.
+    average : int 
+        The number of windows to average for smoothing.
+
+    Returns:
+    --------
+    times : np.ndarray
+        An array of timestamps corresponding to the calculated covariance matrix.
+    frequencies : np.ndarray
+        An array of frequency values associated with the covariance calculations.
+    entropy : np.ndarray
+        An array representing the entropy of the covariance matrices. 
+            This value quantifies the level of uncertainty or disorder in the seismic signals, with higher values indicating greater complexity.
+    """
+
+    ## Calculate the covariance matrix from the seismic stream using the specified window size and averaging factor.
     times, frequencies, covariances = csn.covariancematrix.calculate(stream, window_size, average)
+
+    ## Compute entropy
     entropy = covariances.coherence(kind="entropy")
+
     return times, frequencies, entropy
 
 
-# def compute_neguentropie(stream, av0):
-#     norm = min(len(stream), av0)
-#     shanon_index = np.exp(entropy0)
-#     entropy0 = (np.exp(entropy0)-1)/norm
-#     neguentropie = 1 - entropy0
+def compute_shannon_index(stream, ws0, av0, ax):
+    """
+    Computes the Shannon index from the entropy of a seismic stream and plots the normalized Shannon index against frequency.
 
-#     return neguentropie, shanon_index
+    Parameters:
+    -----------
+    stream : csn.arraystream.ArrayStream
+        The seismic data.
+    ws0 : int
+        The window size for calculating entropy.
+    av0 : int
+        The number of windows to average for whitening.
+    ax : list
+        A list of matplotlib Axes objects for plotting.
 
+    Returns:
+    --------
+    frequencies_shannon_index : np.array
+        Array of frequencies for which the Shannon index is computed.
+    shannon_index_normalised : np.array
+        The normalized Shannon index values corresponding to the frequencies.
+    """
 
-def compute_entropy(stream, ws0, av0, ax):
-    times0, frequencies0, entropy0 = get_entropy(stream, window_size=ws0, average=av0 - 1)
+    ## Compute entropy
+    _, frequencies0, entropy0 = compute_entropy(stream, window_size=ws0, average=av0 - 1)
     
-    f = frequencies0[1:]
-    frequency_mask = (f > 0.1) & (f < 18) #0.5
-    f = f[frequency_mask]
-    shanon_index = np.exp(entropy0)
-    shanon_index = shanon_index[:, frequency_mask].max(axis=0)
-    shanon_index_normalised = shanon_index/len(stream)
+    ## Filter out the first frequency (often zero) to avoid issues in analysis.
+    frequencies_shannon_index = frequencies0[1:]
 
-    ax[2].plot(f, shanon_index_normalised, lw=0.75)
+    ## Create a mask to select frequencies within the specified range
+    frequency_mask = (frequencies_shannon_index > 0.1) & (frequencies_shannon_index < 18)
 
-    return f, shanon_index_normalised
+    ## Compute Shannon index
+    frequencies_shannon_index = frequencies_shannon_index[frequency_mask]
+    shannon_index = np.exp(entropy0)
+    shannon_index = shannon_index[:, frequency_mask].max(axis=0)
+    shannon_index_normalised = shannon_index/len(stream)
+
+    ## Plot the result
+    ax[2].plot(frequencies_shannon_index, shannon_index_normalised, lw=0.75)
+
+    return frequencies_shannon_index, shannon_index_normalised
 
 
-def entropy(ESEC_avalanches, stream_csn, ws0, av0, ax, curve_params, event_index):
-    f, shanon_index = compute_entropy(stream_csn, ws0, av0, ax)
+def entropy_extract_features(ESEC_avalanches, stream_csn, ws0, av0, ax, curve_params, event_index):
+    """
+    Extracts features from the Shannon index of a seismic stream and save the results in a list.
+
+    Parameters:
+    -----------
+    ESEC_avalanches : pd.DataFrame
+        The ESEC.
+    stream_csn : csn.arraystream.ArrayStream
+        The input seismic data stream for analysis.
+    ws0 : int
+        The window size for calculating the Shannon index.
+    av0 : int
+        The number of windows to average for whitening.
+    ax : list
+        A list of matplotlib Axes objects for plotting.
+    curve_params : list
+        A list to append feature extraction results.
+    event_index : int
+        Index of the event to analyze.
+    """
     
-    #Moyenne glissante sur f et shanon_index
-    cp.moyenne_glissante(f, shanon_index, ax, window_size = 40)
+    ## Compute the Shannon index
+    f, shannon_index = compute_shannon_index(stream_csn, ws0, av0, ax)
+    
+    ## Apply a moving average in the entropy spectrum
+    cp.moyenne_glissante(f, shannon_index, ax, window_size = 40)
 
-    split_freq = analysis2.find_split_frequency(f, shanon_index, min_freq=4.0, max_freq=10.0)
+    ## Search the split frequency in the entropy spectrum
+    split_freq = analysis.find_split_frequency(f, shannon_index, min_freq=4.0, max_freq=10.0)
+    print("Value of the split frequency : ", split_freq)
 
-    print("Valeur de la fréquence coin : ", split_freq)
-
+    ## Fit two model (in the high and low frequency) in the spectrum 
     low_mask = f <= split_freq
     high_mask = f > split_freq
-
-    low_freq, low_slope, low_intercept, low_shanon = analysis2.ajustement_de_segment(low_mask, f, shanon_index, ax[2], color='green', label="Ajustement bas", pltplot = False)
-
-    high_freq, high_slope, high_intercept, high_shanon = analysis2.ajustement_de_segment(high_mask, f, shanon_index, ax[2], color='blue', label="Ajustement haut", pltplot = False)
+    low_freq, low_slope, low_intercept, low_shanon = analysis.ajustement_de_segment(low_mask, f, shannon_index, ax[2], color='green', label="Ajustement bas", pltplot = False)
+    high_freq, high_slope, high_intercept, high_shanon = analysis.ajustement_de_segment(high_mask, f, shannon_index, ax[2], color='blue', label="Ajustement haut", pltplot = False)
         
-    curve_params.append({'Event Index': event_index,'FC_ent': split_freq, 'Slope_BF_ent': low_slope,'Intercept_BF_ent': low_intercept,
-                         'First Value_BF_ent': low_shanon[0],'FC_value_ent': low_shanon[-1],'Slope_HF_ent': high_slope,'Intercept_HF_ent': high_intercept,
-                         'Last Value_HF_ent': high_shanon[-1],'type': ESEC_avalanches["type"][event_index], 'numero3': ESEC_avalanches["numero"][event_index], 'volume': ESEC_avalanches["volume"][event_index],
-                         'length': ESEC_avalanches["length"][event_index], 'height': ESEC_avalanches["height"][event_index]})
+    ## Extract and save features
+    curve_params.append({'Event Index': event_index,
+                         'numero3': ESEC_avalanches["numero"][event_index],
+                         'FC_ent': split_freq, 
+                         'Slope_BF_ent': low_slope,
+                         'Intercept_BF_ent': low_intercept,
+                         'First Value_BF_ent': low_shanon[0],
+                         'FC_value_ent': low_shanon[-1],
+                         'Slope_HF_ent': high_slope,
+                         'Intercept_HF_ent': high_intercept,
+                         'Last Value_HF_ent': high_shanon[-1],
+                         'type': ESEC_avalanches["type"][event_index],
+                         'volume': ESEC_avalanches["volume"][event_index],
+                         'length': ESEC_avalanches["length"][event_index], 
+                         'height': ESEC_avalanches["height"][event_index]})
 
 
-def entropy_total(ESEC_avalanches, trim, ws0, av0, curve_params):
+def plot_result(ESEC_avalanches, trim, ws0, av0, curve_params):
+    """
+    Plot the results after calculating the entropy.
+
+    Parameters:
+    -----------
+    ESEC_avalanches : pd.DataFrame
+        The EXEC.
+    trim : list
+        List containing start and end trim values for time.
+    ws0 : int
+        The window size for calculating features.
+    av0 : int
+        The number of windows to average for whitening.
+    curve_params : list
+        A list to append feature extraction results.
+
+    Returns:
+    --------
+    curve_params : list
+        The features extracted from the entropy spectrum
+    ESEC_avalanches : pandas.Dataframe
+        The updated ESEC.
+    """
+
+    ## Loop over all the events
     for event_index in tqdm(ESEC_avalanches["numero"], total=len(ESEC_avalanches)):
         try:
             print("-------------------------")
             print("Event numéro", event_index)
             print("-------------------------")
 
+
+            ### Step 1 : Plot the first trace of the event
+
+            ## Load the stream of the event
             stream = obspy.read(f"sismogrammes/{event_index:03d}.pickle")
+
+            ## Sort by distance, keep only the component Z and trim the stream
             stream = stream.sort(keys=["distance"])
             stream = stream.select(component="Z")
             stream.trim(starttime=stream[0].stats.starttime + trim[0], endtime=stream[0].stats.starttime + trim[1])
-            analysis2.filtering(stream, freq_HP=9, freq_LP=0.5)
-            trace = stream[0]
+
+            ## Apply filters
+            stream = stream.detrend()
+            stream = stream.filter("highpass", freq=0.5)                     # High-pass filter
+            stream = stream.filter("lowpass", freq=9)                        # Low-pass filter
+            stream = stream.filter("bandpass", freqmin=0.5, freqmax=9)       # Band-pass filter
+            stream_filter = stream.taper(max_percentage=0.3, type="hann")    # Taper
+
+            ## Keep only the first trace
+            trace = stream_filter[0]
+
+            if len(stream_filter) == 1:
+                raise Exception("There is only one trace in the stream. Calculating entropy is impossible")
+
+
+            ### Step 2 : Whitening the streal of the event
 
             stream_csn = filter_stream_with_covseisnet(event_index, trim)
 
             if len(stream_csn) == 1:
-                raise Exception("Il n'y a qu'une seule trace dans le stream. Calculer l'entropie est impossible")
+                raise Exception("There is only one trace in the stream. Calculating entropy is impossible")
             
+
+            ### Step 3 : Plot the first trace computed in the step 1 and plot the whintening stream
 
             fig, ax = plt.subplots(3, 1, figsize=(10, 8), constrained_layout=True, gridspec_kw=dict(height_ratios=[1, 1, 2]))
 
+            ## Plot the first trace
             ax[0].plot(trace.times(), trace.data)
-            ax[0].set_ylabel("Nombres numériques")
+            ax[0].set_ylabel("Digital numbers")
             ax[0].set_xmargin(0)
             ax[0].set_xticklabels([])
 
+            ## Plot the whitening stream
             ax[1].plot(stream_csn[0].times(), stream_csn[0].data)
             ax[1].set_xmargin(0)
-            ax[1].set_xlabel("Temps [s]")
-            ax[1].set_ylabel("Nombres numériques")
+            ax[1].set_xlabel("Time [s]")
+            ax[1].set_ylabel("Digital numbers")
 
-            entropy(ESEC_avalanches, stream_csn, ws0, av0, ax, curve_params, event_index)
+
+            ### Step 4 : Compute the entropy and display it
+
+            entropy_extract_features(ESEC_avalanches, stream_csn, ws0, av0, ax, curve_params, event_index)
 
             ax[2].legend()
             ax[2].set_xscale("log")
-            ax[2].set_ylabel("Entropie")
-            ax[2].set_xlabel("Fréquences [Hz]")
+            ax[2].set_ylabel("Entropy")
+            ax[2].set_xlabel("Frequencies [Hz]")
             ax[2].set_xmargin(0)
 
-            # plt.title(ESEC_avalanches["type"][event_index])
+            # plt.title(ESEC_avalanches["type"][event_index]) ## To see the type of the avalanche
+
             figures.save(f"features/3_entropie/pictures/entropie_{event_index}.pdf", tight_layout=False)
             plt.show()
 
+        # If an error occured, it's because the stream is too short.
         except Exception as e:
-            print('Pas de trace dans le stream', e)
-
+            print("error :", e)
+            ## Remove the event
             ESEC_avalanches = ESEC_avalanches.drop(event_index)
 
     return curve_params, ESEC_avalanches
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-"""
-
-#===================================================================================================
-# Function to read a pickel file and return a stream
-# input:
-# pickelFile: the pickel file to read
-# wd: the window duration used to preprocess the stream
-# trim: the time window to trim the stream
-# mpc: the maximum percentage of the taper
-# output:
-# stream: the stream read from the pickel file
-def get_trace(pickelFile,wd=250,trim=[300,800],mpc=0.1):
-    stream = csn.read(pickelFile)
-    stream.preprocess(window_duration_sec=wd)
-    stream.taper(max_percentage=mpc)
-    stream.trim(starttime=stream[0].stats.starttime + trim[0], endtime=stream[0].stats.starttime + trim[1]);
-    return stream
-
-#===================================================================================================
-# Function to calculate the entropy of a stream
-# input:
-# stream: the stream to calculate the entropy
-# window_size: the window size used to calculate the entropy
-# average: the number of windows used to average the entropy
-# output:
-# times: the time axis of the entropy
-# frequencies: the frequency axis of the entropy
-# entropy: the entropy
-def get_entropy(stream, average_step, window_size=50, average=4):
-    times, frequencies, covariances = csn.covariancematrix.calculate(stream, window_size, average, average_step)
-    entropy = covariances.coherence(kind="entropy")
-    return times, frequencies, entropy
-
-
-#===================================================================================================
-# Function to plot the entropy
-#
-# The plot is divided in two subplots: the first one shows the trace and the second one the entropy
-# The entropy is plotted as a pcolormesh plot
-# input:
-# stream: the stream to plot
-# times: the time axis of the entropy
-# frequencies: the frequency axis of the entropy
-# entropy: the entropy to plot
-# window_size: the window size used to calculate the entropy
-# average: the number of windows used to average the entropy
-def plot_entropy(stream,times, frequencies, entropy, window_size=50, average=4):
-    # Plot the entropy
-
-    # #user Helvetica font for plots
-    # plt.rcParams["font.family"] = "Helvetica"
-    # plt.rcParams["font.size"] = 10
-    # plt.rcParams["mathtext.fontset"] = "custom"
-    # plt.rcParams["mathtext.rm"] = "Helvetica"
-    # plt.rcParams["mathtext.it"] = "Helvetica:italic"
-    # plt.rcParams["mathtext.bf"] = "Helvetica:bold"
-    
-    fig, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True,dpi=150)
-    # Plot the trace and entropogram
-    ax[0].plot(stream[0].times(), stream[0].data, color="k") # Plot only the first trace
-    mappable = ax[1].pcolormesh(times, frequencies, entropy.T, cmap="RdYlBu", shading="flat", rasterized=True)
-    # Label the plot
-    ax[0].set_ylabel("DN [*]")
-    ax[0].grid()
-    ax[1].set_ylim(frequencies[1], frequencies.max() / 2)
-    ax[1].set_yscale("log")
-    ax[1].set_ylabel("Frequency (Hz)")
-    ax[1].set_xlabel("Time (seconds)")
-    ax[1].title.set_text("Entropy (window size: {}s, average: {})".format(window_size, average))
-    plt.colorbar(mappable, ax=ax[1], label="Entropy");
-
-"""

@@ -1,2 +1,2 @@
-event_index,distance,asymétrie,aire,energie_max_trace,Impulsion,starttime,endtime,durée,numero2
-0.0,48.81039753705775,0.9021008046645705,2.3052070787232674e-09,8.826328880441373e-11,-9.263929148154283e-14,490.0,570.0,80.0,0
+event_index,numero,distance,skewness,area_of_the_energy_parabola,energy_max,Impulsion
+0,0,48.81039753705775,0.9021008046645705,2.3052070787232674e-09,8.826328880441373e-11,3.5849977252611036e-12

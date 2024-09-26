@@ -4,9 +4,7 @@ ESEC catalog computations libraries.
 This library contains various functions to perform calculations.
 """
 
-import datetime
 import datetime as dt
-from datetime import timedelta
 import glob
 from matplotlib import lines as mlines
 import matplotlib.pyplot as plt
@@ -220,9 +218,6 @@ def create_detection_dataframe(ESEC_avalanches, event_index, trimmed_time_startt
     plt.xlabel(r"Volume [$\mathrm{m^3}$]")
     plt.ylabel("Distance from station to avalanche [km]")
     plt.ylim(0, 600)
-
-
-
 
 
 
