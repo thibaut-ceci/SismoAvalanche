@@ -220,106 +220,95 @@ def create_detection_dataframe(ESEC_avalanches, event_index, trimmed_time_startt
     plt.ylim(0, 600)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def conversion_du_temps_du_catalogue(trace, start_time_string, add_time):
-    start_time = dt.datetime.strptime(start_time_string, '%Y_%m_%d %H%M%S')
-    start_time_seconds = (start_time - trace.stats.starttime.datetime).total_seconds()
-    start_time_event_shifted = start_time_seconds + add_time
-
-    return start_time_event_shifted
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def moyenne_glissante(f, shanon_index, ax, window_size = 40):
+    """
+    Calculates and plots the moving average of the Shannon index over a specified window size.
+
+    Parameters:
+    -----------
+    f : np.array
+        The frequency values.
+    shanon_index : np.array
+        The Shannon index values corresponding to the frequencies.
+    ax : matplotlib.Axes
+        The axis on which to plot the moving average.
+    window_size : int
+        The window size for calculating the moving average.
+    """
+
+    ## Calculate the moving average of the Shannon index using convolution.
     moving_average = np.convolve(shanon_index, np.ones(window_size)/window_size, mode='valid')
+
+    ## Compute the difference between the original Shannon index length and the moving average.
     diff = len(f[:len(shanon_index)]) - len(moving_average)
+
+    ## Pad the moving average with NaN values to match the original length.
     moving_average_padded = np.append(moving_average, [np.nan]*diff)
-    ax[2].plot(f[:len(shanon_index)], moving_average_padded, c="red", label="Moyenne glissante")
+
+    ## Plot the result
+    ax[2].plot(f[:len(shanon_index)], moving_average_padded, c="red", label="Moving average")
 
 
 def merge_dataframes(dossier = "features/1_fitting/data", name = "curve_parameters*.csv", area_to_save = 'features/1_fitting/data/fitting_df.csv'):
+    """
+    Merges multiple CSV files from a specified folder into a single DataFrame and saves the result to a CSV file.
+
+    Parameters:
+    -----------
+    dossier : str
+        The directory where the CSV files are located.
+    name : str
+        The filename pattern for the CSV files to merge.
+    area_to_save : str
+        The path where the merged dataFrame will be saved as a CSV file.
+
+    Returns:
+    --------
+    dataframe_merged : pd.DataFrame
+        The merged DataFrame containing data from all the CSV files.
+    """
+
+    ## Search for all CSV files in the specified directory matching the pattern 'name'
     fichiers_csv = glob.glob(os.path.join(dossier, name))
 
+    ## Read all the CSV files found into a list of DataFrames
     dataframes = [pd.read_csv(fichier) for fichier in fichiers_csv]
-    energy_2 = pd.concat(dataframes, ignore_index=True)
 
-    energy_2.to_csv(area_to_save, index=False)
+    ## Concatenate all the DataFrames into a single DataFrame
+    dataframe_merged = pd.concat(dataframes, ignore_index=True)
 
-    return energy_2
+    ## Save the merged DataFrame
+    dataframe_merged.to_csv(area_to_save, index=False)
 
-
-
-
-
-##########################
+    return dataframe_merged
 
 
-# def find_the_closest_trace_of_the_event(stream_filtered):
-#     distance = 0
-#     closest_trace = None
-#     for i, trace in enumerate(stream_filtered):
-#         if trace.stats.distance < distance:
-#             distance = trace.stats.distance
-#             closest_trace = trace
-#     return distance, closest_trace
+def conversion_du_temps_du_catalogue(trace, start_time_string, add_time):
+    """
+    Converts the catalog start time into seconds relative to the start time of the seismic trace and applies an additional time shift.
 
+    Parameters:
+    -----------
+    trace : obspy.core.trace.Trace
+        The seismic trace containing metadata with start or end time.
+    start_time_string : str
+        The start time of the event in the format 'YYYY_MM_DD HHMMSS'.
+    add_time : float
+        Additional time in seconds to be added to the computed time.
 
-# def find_the_closest_trace_of_X_km(stream_filtered, distance):
-#     target_distance = distance
-#     min_difference = float('inf')
-#     closest_trace = None
-#     for i, trace in enumerate(stream_filtered):
-#         difference = abs(trace.stats.distance - target_distance)
-#         if difference < min_difference:
-#             min_difference = difference
-#             closest_trace = trace
-#     return closest_trace.stats.distance, closest_trace
+    Returns:
+    --------
+    start_time_event_shifted : float
+        The event start time in seconds, relative to the trace's start time, with the time shift applied.
+    """
+    
+    ## Parse the start_time_string into a datetime object using the specified format
+    start_time = dt.datetime.strptime(start_time_string, '%Y_%m_%d %H%M%S')
 
-# def find_the_closest_trace_and_index_with_distance(stream_filtered, distance):
-#     min_difference = float('inf')
-#     closest_trace_index = None
+    ## Compute the difference in seconds between the event start time and the trace start time
+    start_time_seconds = (start_time - trace.stats.starttime.datetime).total_seconds()
 
-#     for i, trace in enumerate(stream_filtered):
-#         current_difference = abs(trace.stats.distance - distance)
-#         if current_difference < min_difference:
-#             min_difference = current_difference
-#             closest_trace_index = i
-#             distance = trace.stats.distance
+    ## Add the extra time shift to the computed start time in seconds
+    start_time_event_shifted = start_time_seconds + add_time
 
-#     return closest_trace_index, stream_filtered[closest_trace_index], distance
+    return start_time_event_shifted

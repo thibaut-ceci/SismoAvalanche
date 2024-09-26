@@ -417,7 +417,6 @@ def detection_method_for_all_events(ESEC_avalanches, stream, event_index, events
                     plt.scatter(volume, df["distance"][i], c='gray', marker='x', s=40)
 
 
-
 def fit_line(frequencies, values):
     """
     Fits a linear model in the data.

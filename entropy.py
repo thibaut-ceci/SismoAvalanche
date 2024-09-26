@@ -181,8 +181,8 @@ def entropy_extract_features(ESEC_avalanches, stream_csn, ws0, av0, ax, curve_pa
     ## Fit two model (in the high and low frequency) in the spectrum 
     low_mask = f <= split_freq
     high_mask = f > split_freq
-    low_freq, low_slope, low_intercept, low_shanon = analysis.ajustement_de_segment(low_mask, f, shannon_index, ax[2], color='green', label="Ajustement bas", pltplot = False)
-    high_freq, high_slope, high_intercept, high_shanon = analysis.ajustement_de_segment(high_mask, f, shannon_index, ax[2], color='blue', label="Ajustement haut", pltplot = False)
+    low_freq, low_slope, low_intercept, low_shanon = analysis.ajustement_de_segment(low_mask, f, shannon_index, ax[2], color='green', label="Model low frequency", pltplot = False)
+    high_freq, high_slope, high_intercept, high_shanon = analysis.ajustement_de_segment(high_mask, f, shannon_index, ax[2], color='blue', label="Model high frequency", pltplot = False)
         
     ## Extract and save features
     curve_params.append({'Event Index': event_index,
