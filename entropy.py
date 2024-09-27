@@ -1,5 +1,5 @@
 """
-ESEC computations entropy libraries.
+ESEC entropy calculate.
 
 This library contains various functions to compute entropy of an avalanche.
 """
