@@ -125,90 +125,183 @@ def label_size(X, Y, axs, labelsize=14):
         axs[Y-1, j].tick_params(axis='both', which='major', labelsize=labelsize)
 
 
+def labels_scatter(x_labels, y_labels, X, Y, axs, fontsize=25):
+    """
+    Adds labels to the scatter plot grid's x and y axes.
 
+    Parameters:
+    -----------
+    x_labels : list of str
+        A list of labels for the x-axis for each subplot column.
+    y_labels : list of str
+        A list of labels for the y-axis for each subplot row.
+    X : int
+        The number of rows in the scatter matrix.
+    Y : int
+        The number of columns in the scatter matrix.
+    axs : np.ndarray
+        A 2D array of Axes objects representing the grid of subplots.
+    fontsize : int
+        The font size to use for the labels.
+    """
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def labels_scatter(x_labels, y_labels, X, Y, axs, fontsize=25):   
+    ## Loop through y_labels and assign them as the y-axis labels for the first column of the grid
     for i, label in enumerate(y_labels):
         axs[i + 1, 0].set_ylabel(label, fontsize=fontsize)
 
+    ## Loop through x_labels and assign them as the x-axis labels for the last row of the grid
     for j, label in enumerate(x_labels):
         axs[Y - 1, j].set_xlabel(label, fontsize=fontsize)
 
 
 def plot_results(columns, axs):
-    num_features = len(columns)  # The length of columns
+    """
+    Plots scatter plots for each pair of features in a grid of subplots.
 
+    Parameters:
+    -----------
+    columns : list or pandas.DataFrame
+        A collection of data columns (features) to be plotted against each other.
+
+    axs : numpy.ndarray
+        A 2D array of Axes objects representing the grid of subplots.
+    """
+
+    ## Compute the number of columns or features
+    num_features = len(columns)  
+
+    ## Loop through every possible combination of features
     for i in range(num_features):
         for j in range(num_features):
+
+            ## Skip the diagonal
             if i == j:
-                continue
+                continue 
+
+            ## Plot the scatter plot for lower triangle
             if i > j:
                 axs[i, j].plot(columns[j], columns[i], 'o', color="C0")
+
+            ## Plot the scatter plot for upper triangle
             else:
                 axs[j, i].plot(columns[i], columns[j], 'o', color="C0")
 
 
 def histogram(features, axs, bin=10, fontsize=6):
+    """
+    Plots a histogram of the given features (in log).
+
+    Parameters:
+    -----------
+    features : np.array
+        The features.
+    axs : matplotlib.axes.Axes
+        The Axes object on which the histogram will be plotted.
+    bin : int
+        The number of bins to use for the histogram.
+    fontsize : int
+        Font size for the y-axis label.
+    """
+    ## Define logarithmically spaced bin edges 
     bin_edges = np.logspace(np.log10(min(features)), np.log10(max(features)), num=bin)
+
+    ## Plot the histogram in log
     axs.hist(features, bin_edges, color='C0')
 
-    ax1 = axs.twinx()
-
+    ## Create an axis to the right
+    ax = axs.twinx()
     ylim0 = axs.get_ylim()
-    ax1.set_ylim(ylim0)
-    ax1.set_ylabel("Nombre d'événements", rotation=270, va='bottom', fontsize=fontsize)
+
+    ax.set_ylim(ylim0)
+    ax.set_ylabel("Number of events", rotation=270, va='bottom', fontsize=fontsize)
 
 
-def histogram_normal(features, axs, bin=10, fontsize=6):
+def histogram_normal(features, axs, fontsize=6):
+    """
+    Plots a histogram of the given features.
+
+    Parameters:
+    -----------
+    features : np.array
+        The features.
+    axs : matplotlib.axes.Axes
+        The Axes object on which the histogram will be plotted.
+    fontsize : int
+        Font size for the y-axis label.
+    """
+    ## Plot the histogram
     axs.hist(features, 20, color='C0')
 
-    ax1 = axs.twinx()
-
+    ## Create an axis to the right
+    ax = axs.twinx()
     ylim0 = axs.get_ylim()
-    ax1.set_ylim(ylim0)
-    ax1.set_ylabel("Nombre d'événements", rotation=270, va='bottom', fontsize=fontsize)
+    
+    ax.set_ylim(ylim0)
+    ax.set_ylabel("Number of events", rotation=270, va='bottom', fontsize=fontsize)
 
 
-def histogram_flip(features, axs, bin=10, fontsize=6):
-    #bin_edges = np.logspace(np.log10(min(features["hl"])), np.log10(max(features["hl"])), num=20)
-    axs.hist(features, bin, orientation='horizontal')
+def histogram_flip(features, axs, fontsize=6):
+    """
+    Plots a histogram of the given features and flip it.
 
-    ax5 = axs.twiny()
+    Parameters:
+    -----------
+    features : np.array
+        The features.
+    axs : matplotlib.axes.Axes
+        The Axes object on which the histogram will be plotted.
+    fontsize : int
+        Font size for the y-axis label.
+    """
 
+    ## Plot the histogram
+    axs.hist(features, orientation='horizontal')
+
+    ## Create an axis to the right
+    ax = axs.twiny()
     ylim = axs.get_xlim()
-    ax5.set_xlim(ylim)
-    ax5.set_xlabel("Nombre d'événements", rotation=0, va='top', fontsize=fontsize)
-    ax5.xaxis.tick_bottom()
-    ax5.xaxis.set_label_position('bottom')
-    ax5.xaxis.set_label_coords(0.5,-0.15)
+    ax.set_xlim(ylim)
+    ax.set_xlabel("Number of events", rotation=0, va='top', fontsize=fontsize)
+    ax.xaxis.tick_bottom()
+
+    ## Flip the histogram
+    ax.xaxis.set_label_position('bottom')
+    ax.xaxis.set_label_coords(0.5,-0.15)
 
 
-def set_axe_log(axs, size):
-    for i in range(0, size):
-        axs[2, i].set_yscale('log')
-        axs[5, i].set_yscale('log')
-        axs[6, i].set_yscale('log')
-        axs[12, i].set_yscale('log')
+def set_axe_log(axs, size, y_log_rows, x_log_cols):
+    """
+    Sets specific axes to logarithmic scale based on the row or column index.
 
-    for i in range(0, size):
-        axs[i, 0].set_xscale('log')
-        axs[i, 2].set_xscale('log')
-        axs[i, 5].set_xscale('log')
-        axs[i, 6].set_xscale('log')
-        axs[i, 12].set_xscale('log')
+    Parameters:
+    -----------
+    axs : 2D array of matplotlib.axes.Axes
+        The axes on which to set the log scale.
+    size : int
+        The total number of axes in the grid.
+    y_log_rows : list of int
+        The row indices for which the y-axis should be set to log scale.
+    x_log_cols : list of int
+        The column indices for which the x-axis should be set to log scale.
+    """
+
+    ## Apply log scale on the y-axis
+    for i in range(size):
+        if i in y_log_rows:
+            for j in range(size):
+                axs[i, j].set_yscale('log')
+
+                ## Keep y ticks on the left-most column
+                if j != 0:
+                    axs[i, j].tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
+
+    ## Apply log scale on the x-axis
+    for j in range(size):
+        if j in x_log_cols:
+            for i in range(size):
+                axs[i, j].set_xscale('log')
+
+                ## Keep x ticks on the bottom-most row
+                if i != size - 1:
+                    axs[i, j].tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
 
