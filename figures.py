@@ -15,7 +15,7 @@ import computations as cp
 
 def save(path, tight_layout=True):
     """
-    Saves the current figure to the specified file path and displays it.
+    Saves the current figure to the file path and displays it.
 
     Parameters:
     ------------
@@ -27,7 +27,7 @@ def save(path, tight_layout=True):
     if tight_layout:
         plt.tight_layout()
 
-    plt.savefig(path) ## Save the plot to the specified path
+    plt.savefig(path) ## Save the plot to the path
     plt.show()        ## Display the plot
 
 
@@ -45,7 +45,7 @@ def plot_fitted_curve(catalog, column1, column2, ax, number):
     Parameters:
     ------------
     catalog : pandas.DataFrame
-        ESEC containing the data for the fit.
+        The ESEC.
     column1 : str
         The data of the X-axis.
     column2 : str
@@ -57,23 +57,24 @@ def plot_fitted_curve(catalog, column1, column2, ax, number):
 
     Returns:
     ---------
-    log_X : numpy.ndarray
+    log_X : np.ndarray
         Log of the data of the X-axis.
-    log_Y : numpy.ndarray
+    log_Y : np.ndarray
         Log of the data of the Y-axis.
-    X_fit : numpy.ndarray
+    X_fit : np.ndarray
         X values used to plot the fitted curve.
-    Y_fit : numpy.ndarray
+    Y_fit : np.ndarray
         Fitted Y values corresponding to X_fit.
-    popt : numpy.ndarray
+    popt : np.ndarray
         Optimal parameters for the fitted model.
-    pcov : numpy.ndarray
+    pcov : np.ndarray
         Covariance matrix of the fitted parameters.
     a : float
         The coefficient of the model.
     b : float
         The exponent of the model.
     """
+    
     ## Log of data with a small constant to avoid log(0)
     constant = 0.01
     log_X = np.log(catalog[column1] + constant)
@@ -101,43 +102,43 @@ def plot_fitted_curve(catalog, column1, column2, ax, number):
     return log_X, log_Y, X_fit, Y_fit, popt, pcov, a, b
 
 
-def plot_fitted_curve_without_incertainties(ESEC_with_uncertainties, catalog_without_uncertainties, catalog_filtered, X_fit, Y_fit, Y_fit_lower, Y_fit_upper, Y, a, b, column1, column2, column3, column4, ax, number):
+def plot_fitted_curve_without_uncertainties(ESEC_with_uncertainties, catalog_without_uncertainties, catalog_filtered, X_fit, Y_fit, Y_fit_lower, Y_fit_upper, Y, a, b, column1, column2, column3, column4, ax, number):
     """
-    Plot one fitted curve and the confidence intervals to fill incertainties.
+    Plot one fitted curve and the confidence intervals to fill uncertainties.
 
     Parameters:
     ------------
     ESEC_with_uncertainties : pandas.DataFrame
         The ESEC.
     catalog_without_uncertainties : pandas.DataFrame
-        Catalog of data without uncertainties.
+        ESEC without uncertainties.
     catalog_filtered : pandas.DataFrame
-        Catalog of data with filtered uncertainties.
-    X_fit : numpy.ndarray
+        ESEC without NaN.
+    X_fit : np.ndarray
         X values used to plot the fitted curve.
-    Y_fit : numpy.ndarray
+    Y_fit : np.ndarray
         Fitted Y values corresponding to X_fit.
-    Y_fit_lower : numpy.ndarray
+    Y_fit_lower : np.ndarray
         Lower bound of the confidence interval.
-    Y_fit_upper : numpy.ndarray
+    Y_fit_upper : np.ndarray
         Upper bound of the confidence interval.
-    Y : numpy.ndarray
+    Y : np.ndarray
         The Y values of the data.
     a : float
         Coefficient from the fitted curve.
     b : float
         Exponent from the fitted curve.
-    volume_column : str
+    column1 : str
         Name of the column representing the X-axis.
-    data_column : str
+    column2 : str
         Name of the column representing the Y-axis.
-    xerr_lower_column : str
+    column3 : str
         Column name for the lower bound of the X-error.
-    xerr_upper_column : str
+    column4 : str
         Column name for the upper bound of the X-error.
     ax : matplotlib.axes.Axes
         For multiple subplots.
-    subplot_index : int
+    number : int
         For multiple subplots (the index).
 
     Returns:
@@ -146,7 +147,7 @@ def plot_fitted_curve_without_incertainties(ESEC_with_uncertainties, catalog_wit
         ESEC with uncertainties.
     """
     ## Plot the fitted curve
-    ax[number].plot(X_fit, Y_fit, 'r-', label=f'Ajustement de courbe : DV = {a:.2f} * volume^{b:.2f}')
+    ax[number].plot(X_fit, Y_fit, 'r-', label=f'Curve fitting : DV = {a:.2f} * volume^{b:.2f}')
 
     ## Plot the data with and without uncertainties
     ax[number].scatter(catalog_without_uncertainties[column1], Y, color='blue', label='Data with computed uncertainties')
@@ -160,7 +161,6 @@ def plot_fitted_curve_without_incertainties(ESEC_with_uncertainties, catalog_wit
 
     ## Plot horizontal lines connecting each point with confidence intervals
     for index, (_, y) in enumerate(zip(catalog_without_uncertainties[column1], Y)):
-        ## Compute the
         h_lower = np.interp(y, Y_fit_lower, X_fit)
         h_upper = np.interp(y, Y_fit_upper, X_fit)
         
@@ -182,8 +182,6 @@ def plot_fitted_curve_without_incertainties(ESEC_with_uncertainties, catalog_wit
         ## To know which uncertainties are computed or already present in the ESEC
         ESEC_with_uncertainties.at[original_index, 'determined_uncertainty'] = "True"
 
-
-
     ax[number].set_xscale('log')
     ax[number].set_yscale('log')
     ax[number].set_xlabel(f"{column1}" + r" (m$^3$)", fontsize=14)
@@ -199,9 +197,9 @@ def scatter_plot(columnx, columny, labelx, labely, logx=False, logy=False):
 
     Parameters:
     ------------
-    columnx : numpy.ndarray
+    columnx : np.ndarray
         Data for the x-axis.
-    columny : numpy.ndarray
+    columny : np.ndarray
         Data for the y-axis.
     labelx : str
         Label for the x-axis.
@@ -234,22 +232,22 @@ def plot_detected_signal(time_start_detection, data_start_detection, trimmed_tim
 
     Parameters
     ----------
-    time_start_detection : numpy.ndarray
-        Time points corresponding to the detected signal for detection.
-    data_start_detection : numpy.ndarray
-        Data values corresponding to the detected signal for detection.
-    trimmed_time : numpy.ndarray
-        Time points of the trimmed data signal.
-    trimmed_data : numpy.ndarray
-        Trimmed data signal values.
-    time_raw : numpy.ndarray
+    time_start_detection : np.ndarray
+        Time points for detection.
+    data_start_detection : np.ndarray
+        Data values for detection.
+    trimmed_time : np.ndarray
+        Time points of the detected signal.
+    trimmed_data : np.ndarray
+        Trimmed data of the detected signal.
+    time_raw : np.ndarray
         Time points of the raw signal.
-    data_raw : numpy.ndarray
-        Raw signal data values.
+    data_raw : np.ndarray
+        Raw signal of the raw signal.
     upper_threshold : float
-        Upper threshold for the seismic signal.
+        Seismic signal threshold.
     lower_threshold : float
-        Lower threshold for noise.
+        Noise threshold.
     """
 
     _, ax = plt.subplots(figsize=(10, 5))
@@ -277,7 +275,7 @@ def plot_waveform_with_distance_signal(ESEC_avalanches, trace_data, event_index,
     trace_data : np.ndarray
         Seismic trace data.
     event_index : int
-        Index of the event in the DataFrame.
+        Index of the event in the ESEC.
     time : list
         Time offsets for the trace.
     distance : float
@@ -321,7 +319,7 @@ def plot_waveform_with_distance_detected_signal(ESEC_avalanches, trace_data, eve
     trace_data : np.ndarray
         Seismic trace data.
     event_index : int
-        Index of the event in the DataFrame.
+        Index of the event in the ESEC.
     time : list
         Time offsets for the trace.
     distance : float
@@ -352,7 +350,7 @@ def plot_waveform_with_distance_detected_signal(ESEC_avalanches, trace_data, eve
     ## Compute the waveform based on trace data and a scaling factor
     waveform = cp.compute_waveform_with_distance(trace_data, 10)
 
-    ## To display the legend one time and plot the detected part of the signal by the detected method
+    ## To display the legend one time and plot the detected part of the signal by the detection method
     if label1 == True:
         ax.plot(time_real, waveform + distance, color=color, lw=lw, rasterized=True, label = "Detected signal")
         label1 = False

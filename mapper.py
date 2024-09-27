@@ -10,6 +10,7 @@ from cartopy import crs as ccrs
 from cartopy import feature as cfeature
 import matplotlib.pyplot as plt
 
+
 def select_extent():
     """
     Returns the geographical extent (latitude and longitude) for the selected area.
@@ -51,9 +52,9 @@ def add_equator_and_tropics(ax):
     ax.plot([-180, 180], [-23.4368, -23.4368], color="black", transform=ccrs.PlateCarree(), alpha=0.5, lw = 0.5)
 
     ## Add labels for Equator and Tropics
-    ax.text(-179, 1, 'Equateur', va='bottom', ha='left', color="black", alpha=0.5, fontsize=8, transform=ccrs.PlateCarree())
-    ax.text(-179, 23.4368, 'Tropique du Cancer', va='bottom', ha='left', color="black", alpha=0.5, fontsize=8, transform=ccrs.PlateCarree())
-    ax.text(-179, -23.4368, 'Tropique du Capricorne', va='bottom', ha='left', color="black", alpha=0.5, fontsize=8, transform=ccrs.PlateCarree())
+    ax.text(-179, 1, 'Equator', va='bottom', ha='left', color="black", alpha=0.5, fontsize=8, transform=ccrs.PlateCarree())
+    ax.text(-179, 23.4368, 'Tropic of Cancer', va='bottom', ha='left', color="black", alpha=0.5, fontsize=8, transform=ccrs.PlateCarree())
+    ax.text(-179, -23.4368, 'Tropic of Capricorn', va='bottom', ha='left', color="black", alpha=0.5, fontsize=8, transform=ccrs.PlateCarree())
 
     return ax
     
@@ -117,7 +118,7 @@ def show_select_area(avalanches, extent, add_equator_and_tropics_on_map = False,
     avalanches : pandas.DataFrame
         The ESEC.
     extent : list
-        Extent of the map in the format [lon_min, lon_max, lat_min, lat_max].
+        Extent of the map.
     add_equator_and_tropics_on_map : bool
         If True, adds the equator and tropics lines to the map.
     add_legend : bool
@@ -130,7 +131,7 @@ def show_select_area(avalanches, extent, add_equator_and_tropics_on_map = False,
     _ = plt.figure(figsize=(15,15))
     ax = plt.axes(projection=ccrs.Mercator())
 
-    ax.plot(avalanches.longitude, avalanches.latitude, "C3*", transform=ccrs.PlateCarree(), label="Evénement", markeredgecolor='black', markeredgewidth=0.50, markersize = 25)
+    ax.plot(avalanches.longitude, avalanches.latitude, "C3*", transform=ccrs.PlateCarree(), label="Avalanche", markeredgecolor='black', markeredgewidth=0.50, markersize = 25)
     
     ## Add features
     coastlines_features(ax)
@@ -159,7 +160,7 @@ def show(event, max_extent = 10):
     event : obspy.core.event.Event
         The event to show on the map. Also contains the inventory of stations.
     max_extent : float
-        The maximum extent (in degrees) around the event for the map display.
+        The maximum extent (in degrees) around the avalanche.
     """
     
     ## Ignore specific warnings
@@ -212,13 +213,13 @@ def show_select_area_with_NoS(avalanches, extent, column):
     extent : list
         The extent to display on the map.
     column : str
-        The column number of stations in the ESEC.
+        The column "number of stations" in the ESEC.
     """
     
     ## Ignore specific warnings
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    ## Split data for plot
+    ## Split data for plotting
     avalanches_filtre_NOS0 = avalanches.loc[(avalanches[column] >= 3) & (avalanches[column] <= 10)]
     avalanches_filtre_NOS1 = avalanches.loc[(avalanches[column] >= 10) & (avalanches[column] <= 20)]
     avalanches_filtre_NOS2 = avalanches.loc[(avalanches[column] >= 20) & (avalanches[column] <= 50)]
@@ -251,13 +252,13 @@ def show_select_area_with_volume(avalanches, extent, column):
     extent : list
         The extent to display on the map.
     column : str
-        The column volume in the ESEC.
+        The column "volume" in the ESEC.
     """
 
     ## Ignore specific warnings
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    ## Split data for plot
+    ## Split data for plotting
     avalanches_filtre_VOL0 = avalanches.loc[(avalanches[column] >= 0) & (avalanches[column] <= 100000)]
     avalanches_filtre_VOL3 = avalanches.loc[(avalanches[column] >= 100000) & (avalanches[column] <= 1000000)]
     avalanches_filtre_VOL4 = avalanches.loc[(avalanches[column] >= 1000000) & (avalanches[column] <= 10000000)]
@@ -290,13 +291,13 @@ def show_select_area_with_subtype(avalanches, extent, column):
     extent : list
         The extent to display on the map.
     column : str
-        The column subtype in the ESEC.
+        The column "subtype" in the ESEC.
     """
     
     ## Ignore specific warnings
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    ## Split data for plot
+    ## Split data for plotting
     avalanches_filtre_subtype0 = avalanches.loc[avalanches[column] == 'Rock/ice/debris avalanches and slides']
     avalanches_filtre_subtype1 = avalanches.loc[avalanches[column] == 'Snow avalanches']
 
@@ -325,13 +326,13 @@ def show_select_area_with_type(avalanches, extent, column):
     extent : list
         The extent to display on the map.
     column : str
-        The column type in the ESEC.
+        The column "type" in the ESEC.
     """
 
     ## Ignore specific warnings
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    ## Split data for plot
+    ## Split data for plotting
     value = avalanches[column].value_counts()
     value = value.index.tolist()
 
@@ -363,13 +364,13 @@ def show_select_area_with_length(avalanches, extent, column):
     extent : list
         The extent to display on the map.
     column : str
-        The column length in the ESEC.
+        The column "length" in the ESEC.
     """
 
     ## Ignore specific warnings
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    ## Split data for plot
+    ## Split data for plotting
     avalanches_filtre_L0 = avalanches.loc[(avalanches[column] >= 0) & (avalanches[column] <= 1000)]
     avalanches_filtre_L1 = avalanches.loc[(avalanches[column] >= 1000) & (avalanches[column] <= 5000)]
     avalanches_filtre_L2 = avalanches.loc[(avalanches[column] >= 5000) & (avalanches[column] <= 10000)]
@@ -404,13 +405,13 @@ def show_select_area_with_height(avalanches, extent, column):
     extent : list
         The extent to display on the map.
     column : str
-        The column height in the ESEC.
+        The column "height" in the ESEC.
     """
    
     ## Ignore specific warnings
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    ## Split data for plot
+    ## Split data for plotting
     avalanches_filtre_H0 = avalanches.loc[(avalanches[column] >= 0) & (avalanches[column] <= 500)]
     avalanches_filtre_H1 = avalanches.loc[(avalanches[column] >= 500) & (avalanches[column] <= 1000)]
     avalanches_filtre_H2 = avalanches.loc[(avalanches[column] >= 1000) & (avalanches[column] <= 1500)]
@@ -445,13 +446,13 @@ def show_select_area_with_date(avalanches, extent, column):
     extent : list
         The extent to display on the map.
     column : str
-        The column starttime in the ESEC.
+        The column "starttime" in the ESEC.
     """
 
     ## Ignore specific warnings
     warnings.filterwarnings("ignore", category=UserWarning)
     
-    ## Split data for plot
+    ## Split data for plotting
     avalanches[column][0]
 
     avalanches_filtre_ARS0 = avalanches.loc[(avalanches[column] >= str(1900)) & (avalanches[column] <= str(1980))]

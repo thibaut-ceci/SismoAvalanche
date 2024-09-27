@@ -1,7 +1,7 @@
 """
 ESEC entropy calculate.
 
-This library contains various functions to compute entropy of an avalanche.
+This library contains various functions to compute the entropy of an avalanche.
 """
 
 from tqdm.notebook import tqdm
@@ -40,7 +40,7 @@ def filter_stream_with_covseisnet(event_index, trim):
     stream = stream.sort(keys=["distance"])
     stream = stream.select(component="Z")
 
-    ## Keep only the trace between the source and 100 km away.
+    ## Keep only the trace between the source and 100 km distance
     stream = csn.arraystream.ArrayStream([trace for trace in stream if trace.stats.distance < 100])
 
     ## Trim the stream
@@ -57,12 +57,12 @@ def filter_stream_with_covseisnet(event_index, trim):
     stream.preprocess(window_duration_sec=300, epsilon=1e-10)
     stream.taper(max_percentage=0.01)
 
-    ## Trim again after the preprocess
+    ## Trim again after the whitening
     min_starttime = max(tr.stats.starttime for tr in stream)
     max_endtime = min(tr.stats.endtime for tr in stream)
     stream.trim(min_starttime, max_endtime)
 
-    ## Print the stream and the number of trace
+    ## Print the stream and the number of traces
     print(stream)
     print("Number of traces :", len(stream))
 
@@ -71,29 +71,28 @@ def filter_stream_with_covseisnet(event_index, trim):
 
 def compute_entropy(stream, window_size=50, average=4):
     """
-    Calculates the entropy of the covariance matrix derived from a seismic stream.
+    Computes the entropy of a stream.
 
     Parameters:
     -----------
     stream : csn.arraystream.ArrayStream
-        The input seismic data stream.
+        The seismic stream.
     window_size : int
-        The size of the window for calculating covariance.
+        The size of the window for calculating covariance matrices.
     average : int 
-        The number of windows to average for smoothing.
+        The number of windows to average the covariance matrices.
 
     Returns:
     --------
     times : np.ndarray
-        An array of timestamps corresponding to the calculated covariance matrix.
+        An array of timestamps.
     frequencies : np.ndarray
-        An array of frequency values associated with the covariance calculations.
+        An array of frequency.
     entropy : np.ndarray
-        An array representing the entropy of the covariance matrices. 
-            This value quantifies the level of uncertainty or disorder in the seismic signals, with higher values indicating greater complexity.
+        An array representing the entropy.
     """
 
-    ## Calculate the covariance matrix from the seismic stream using the specified window size and averaging factor.
+    ## Compute the covariance matrices from the seismic stream using the specified window size and averaging factor.
     times, frequencies, covariances = csn.covariancematrix.calculate(stream, window_size, average)
 
     ## Compute entropy
@@ -111,9 +110,9 @@ def compute_shannon_index(stream, ws0, av0, ax):
     stream : csn.arraystream.ArrayStream
         The seismic data.
     ws0 : int
-        The window size for calculating entropy.
+        The size of the window for calculating covariance matrices.
     av0 : int
-        The number of windows to average for whitening.
+        The number of windows to average the covariance matrices.
     ax : list
         A list of matplotlib Axes objects for plotting.
 
@@ -157,9 +156,9 @@ def entropy_extract_features(ESEC_avalanches, stream_csn, ws0, av0, ax, curve_pa
     stream_csn : csn.arraystream.ArrayStream
         The input seismic data stream for analysis.
     ws0 : int
-        The window size for calculating the Shannon index.
+        The size of the window for calculating covariance matrices.
     av0 : int
-        The number of windows to average for whitening.
+        The number of windows to average the covariance matrices.
     ax : list
         A list of matplotlib Axes objects for plotting.
     curve_params : list
@@ -178,7 +177,7 @@ def entropy_extract_features(ESEC_avalanches, stream_csn, ws0, av0, ax, curve_pa
     split_freq = analysis.find_split_frequency(f, shannon_index, min_freq=4.0, max_freq=10.0)
     print("Value of the split frequency : ", split_freq)
 
-    ## Fit two model (in the high and low frequency) in the spectrum 
+    ## Fit two models (in the high and low frequency) in the spectrum 
     low_mask = f <= split_freq
     high_mask = f > split_freq
     low_freq, low_slope, low_intercept, low_shanon = analysis.ajustement_de_segment(low_mask, f, shannon_index, ax[2], color='green', label="Model low frequency", pltplot = False)
@@ -208,13 +207,13 @@ def plot_result(ESEC_avalanches, trim, ws0, av0, curve_params):
     Parameters:
     -----------
     ESEC_avalanches : pd.DataFrame
-        The EXEC.
+        The ESEC.
     trim : list
         List containing start and end trim values for time.
     ws0 : int
-        The window size for calculating features.
+        The size of the window for calculating covariance matrices.
     av0 : int
-        The number of windows to average for whitening.
+        The number of windows to average the covariance matrices.
     curve_params : list
         A list to append feature extraction results.
 
@@ -223,7 +222,7 @@ def plot_result(ESEC_avalanches, trim, ws0, av0, curve_params):
     curve_params : list
         The features extracted from the entropy spectrum
     ESEC_avalanches : pandas.Dataframe
-        The updated ESEC.
+        The ESEC.
     """
 
     ## Loop over all the events
@@ -244,12 +243,12 @@ def plot_result(ESEC_avalanches, trim, ws0, av0, curve_params):
             stream = stream.select(component="Z")
             stream.trim(starttime=stream[0].stats.starttime + trim[0], endtime=stream[0].stats.starttime + trim[1])
 
-            ## Apply filters
-            stream = stream.detrend()
-            stream = stream.filter("highpass", freq=0.5)                     # High-pass filter
-            stream = stream.filter("lowpass", freq=9)                        # Low-pass filter
-            stream = stream.filter("bandpass", freqmin=0.5, freqmax=9)       # Band-pass filter
-            stream_filter = stream.taper(max_percentage=0.3, type="hann")    # Taper
+            ## Preprocessing the stream
+            stream = stream.detrend()                                     # Detrend the seismic traces in the stream
+            stream = stream.filter("highpass", freq=0.5)                  # High-pass filter
+            stream = stream.filter("lowpass", freq=9)                     # Low-pass filter
+            stream = stream.filter("bandpass", freqmin=0.5, freqmax=9)    # Band-pass filter
+            stream_filter = stream.taper(max_percentage=0.3, type="hann") # Taper
 
             ## Keep only the first trace
             trace = stream_filter[0]
@@ -258,7 +257,7 @@ def plot_result(ESEC_avalanches, trim, ws0, av0, curve_params):
                 raise Exception("There is only one trace in the stream. Calculating entropy is impossible")
 
 
-            ### Step 2 : Whitening the streal of the event
+            ### Step 2 : Whitening the stream of the event
 
             stream_csn = filter_stream_with_covseisnet(event_index, trim)
 
@@ -266,7 +265,7 @@ def plot_result(ESEC_avalanches, trim, ws0, av0, curve_params):
                 raise Exception("There is only one trace in the stream. Calculating entropy is impossible")
             
 
-            ### Step 3 : Plot the first trace computed in the step 1 and plot the whintening stream
+            ### Step 3 : Plot the first trace computed in the step 1 and plot the whitening stream
 
             fig, ax = plt.subplots(3, 1, figsize=(10, 8), constrained_layout=True, gridspec_kw=dict(height_ratios=[1, 1, 2]))
 
@@ -300,7 +299,8 @@ def plot_result(ESEC_avalanches, trim, ws0, av0, curve_params):
 
         # If an error occured, it's because the stream is too short.
         except Exception as e:
-            print("error :", e)
+            print("Error :", e)
+            
             ## Remove the event
             ESEC_avalanches = ESEC_avalanches.drop(event_index)
 

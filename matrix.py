@@ -22,6 +22,7 @@ def correlation_matrix(data, labels, annotate=True):
     annotate : bool
         If True, annotates the heatmap with the correlation coefficients.
     """
+
     ## Compute the correlation matrix
     corr_matrix = data.corr()
 
@@ -44,15 +45,14 @@ def remove_fig(fig, axs):
     -----------
     fig : matplotlib.figure.Figure
         The figure object from which subplots will be removed.
-    
-    axs : numpy.ndarray
+    axs : np.ndarray
         A 2D array of Axes objects in the figure.
     """
     
-    ## Determine the number of features (subplots along one axis)
+    ## Determine the number of features
     num_features = axs.shape[0]
 
-    ## Loop through each subplot in the upper triangular part of the grid
+    ## Loop through each subplot in the upper triangular part of the scatter matrix
     for i in range(num_features):
         for j in range(i + 1, num_features):
 
@@ -62,7 +62,7 @@ def remove_fig(fig, axs):
 
 def remove_ticks(X, Y, axs):
     """
-    Removes tick labels and ticks from certain subplots in a grid.
+    Removes tick labels and ticks from certain subplots in the scatter matrix.
 
     Parameters:
     -----------
@@ -70,15 +70,15 @@ def remove_ticks(X, Y, axs):
         The number of rows in the scatter matrix.
     Y : int
         The number of columns in the scatter matrix.
-    axs : numpy.ndarray
-        A 2D array of Axes objects representing the subplots in the figure.
+    axs : np.ndarray
+        A 2D array of Axes objects representing the subplots in the scatter matrix.
     """
 
-    ## Loop through each subplot in the grid
+    ## Loop through each subplot in the scatter matrix
     for i in range(X):
         for j in range(Y):
 
-            ## Remove both x and y tick labels and ticks for the diagonal subplots
+            ## Remove both x and y tick labels and ticks for the diagonal of the scatter matrix
             if i == j:
                 axs[i, j].xaxis.set_ticklabels([])  ## Remove x-axis tick labels
                 axs[i, j].yaxis.set_ticklabels([])  ## Remove y-axis tick labels
@@ -110,8 +110,8 @@ def label_size(X, Y, axs, labelsize=14):
         The number of rows in the scatter matrix.
     Y : int
         The number of columns in the scatter matrix.
-    axs : numpy.ndarray
-        A 2D array of Axes objects representing the subplots in the figure.
+    axs : np.ndarray
+        A 2D array of Axes objects representing the subplots in the scatter matrix.
     labelsize : int
         The size of the labels.
     """
@@ -132,39 +132,38 @@ def labels_scatter(x_labels, y_labels, X, Y, axs, fontsize=25):
     Parameters:
     -----------
     x_labels : list of str
-        A list of labels for the x-axis for each subplot column.
+        A list of labels for the x-axis for each scatter matrix column.
     y_labels : list of str
-        A list of labels for the y-axis for each subplot row.
+        A list of labels for the y-axis for each scatter matrix row.
     X : int
         The number of rows in the scatter matrix.
     Y : int
         The number of columns in the scatter matrix.
     axs : np.ndarray
-        A 2D array of Axes objects representing the grid of subplots.
+        A 2D array of Axes objects representing the subplots in the scatter matrix.
     fontsize : int
         The font size to use for the labels.
     """
 
-    ## Loop through y_labels and assign them as the y-axis labels for the first column of the grid
+    ## Loop through y_labels and assign them as the y-axis labels for the first column of the scatter matrix.
     for i, label in enumerate(y_labels):
         axs[i + 1, 0].set_ylabel(label, fontsize=fontsize)
 
-    ## Loop through x_labels and assign them as the x-axis labels for the last row of the grid
+    ## Loop through x_labels and assign them as the x-axis labels for the last row of the scatter matrix.
     for j, label in enumerate(x_labels):
         axs[Y - 1, j].set_xlabel(label, fontsize=fontsize)
 
 
 def plot_results(columns, axs):
     """
-    Plots scatter plots for each pair of features in a grid of subplots.
+    Plots scatter plots for each pair of features in the scatter matrix.
 
     Parameters:
     -----------
     columns : list or pandas.DataFrame
         A collection of data columns (features) to be plotted against each other.
-
-    axs : numpy.ndarray
-        A 2D array of Axes objects representing the grid of subplots.
+    axs : np.ndarray
+        A 2D array of Axes objects representing the subplots in the scatter matrix.
     """
 
     ## Compute the number of columns or features
@@ -193,7 +192,7 @@ def histogram(features, axs, bin=10, fontsize=6):
 
     Parameters:
     -----------
-    features : np.array
+    features : np.ndarray
         The features.
     axs : matplotlib.axes.Axes
         The Axes object on which the histogram will be plotted.
@@ -202,7 +201,8 @@ def histogram(features, axs, bin=10, fontsize=6):
     fontsize : int
         Font size for the y-axis label.
     """
-    ## Define logarithmically spaced bin edges 
+    
+    ## Define logarithmically spaced bin edges
     bin_edges = np.logspace(np.log10(min(features)), np.log10(max(features)), num=bin)
 
     ## Plot the histogram in log
@@ -222,7 +222,7 @@ def histogram_normal(features, axs, fontsize=6):
 
     Parameters:
     -----------
-    features : np.array
+    features : np.ndarray
         The features.
     axs : matplotlib.axes.Axes
         The Axes object on which the histogram will be plotted.
@@ -246,7 +246,7 @@ def histogram_flip(features, axs, fontsize=6):
 
     Parameters:
     -----------
-    features : np.array
+    features : np.ndarray
         The features.
     axs : matplotlib.axes.Axes
         The Axes object on which the histogram will be plotted.
@@ -278,7 +278,7 @@ def set_axe_log(axs, size, y_log_rows, x_log_cols):
     axs : 2D array of matplotlib.axes.Axes
         The axes on which to set the log scale.
     size : int
-        The total number of axes in the grid.
+        The total number of axes in the scatter matrix.
     y_log_rows : list of int
         The row indices for which the y-axis should be set to log scale.
     x_log_cols : list of int
@@ -291,7 +291,7 @@ def set_axe_log(axs, size, y_log_rows, x_log_cols):
             for j in range(size):
                 axs[i, j].set_yscale('log')
 
-                ## Keep y ticks on the left-most column
+                ## Remove y ticks
                 if j != 0:
                     axs[i, j].tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
 
@@ -301,7 +301,6 @@ def set_axe_log(axs, size, y_log_rows, x_log_cols):
             for i in range(size):
                 axs[i, j].set_xscale('log')
 
-                ## Keep x ticks on the bottom-most row
+                ## Remove x ticks
                 if i != size - 1:
                     axs[i, j].tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-
