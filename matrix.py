@@ -1,5 +1,5 @@
 """
-ESEC scatter matrix
+ESEC scatter matrix.
 
 Library to create a scatter matrix.
 """
