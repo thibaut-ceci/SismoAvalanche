@@ -1,8 +1,10 @@
 """
-ESEC catalog computations libraries.
+ESEC computation libraries.
 
 This library contains various functions to perform calculations.
 """
+
+from tqdm.notebook import tqdm
 
 import datetime as dt
 import glob
@@ -14,7 +16,6 @@ import pandas as pd
 from scipy.stats import t
 import warnings
 
-from tqdm.notebook import tqdm
 tqdm.pandas()
 
 
@@ -25,7 +26,7 @@ def remove_outliers_in_catalog(catalog, catalog_column, subset):
     Parameters:
     ------------
     catalog : pandas.DataFrame
-        ESEC from which outliers are to be removed.
+        The ESEC.
     catalog_column : pandas.Series
         The column in the ESEC to be used for outlier detection.
     subset : list
@@ -34,9 +35,10 @@ def remove_outliers_in_catalog(catalog, catalog_column, subset):
     Returns:
     ---------
     pandas.DataFrame
-        The new ESEC with outliers removed.
+        The ESEC without outliers.
     """
 
+    ## Remove a warning
     warnings.filterwarnings("ignore", category=UserWarning)
 
     ## Calculate the first and third quartiles
@@ -54,7 +56,7 @@ def remove_outliers_in_catalog(catalog, catalog_column, subset):
     outliers = catalog[(catalog_column < lower_bound) | (catalog_column > upper_bound)]
     print(f"Number of outliers in {subset[1]}:", outliers.shape[0])
 
-    ## Remove rows with missing values in the specified subset columns
+    ## Remove rows with missing values
     ESEC_avalanches = catalog.dropna(subset=subset)
 
     ## Remove outliers with the computed bounds
@@ -69,20 +71,20 @@ def confidence_bounds(X_fit, log_X, popt, pcov):
 
     Parameters:
     ------------
-    X_fit : numpy.ndarray
+    X_fit : np.ndarray
         X values used to plot the fitted curve (in figures.plot_fitted_curve).
-    log_X : numpy.ndarray
+    log_X : np.ndarray
         Log of the data of the X-axis (in figures.plot_fitted_curve).
-    popt : numpy.ndarray
+    popt : np.ndarray
         Optimal parameters for the fitted model (in figures.plot_fitted_curve).
-    pcov : numpy.ndarray
+    pcov : np.ndarray
         Covariance matrix of the fitted parameters (in figures.plot_fitted_curve).
 
     Returns:
     ---------
-    Y_fit_lower : numpy.ndarray
+    Y_fit_lower : np.ndarray
         The lower bound of the fitted curve.
-    Y_fit_upper : numpy.ndarray
+    Y_fit_upper : np.ndarray
         The upper bound of the fitted curve.
     """
     ## Calculate the standard error for each parameter
@@ -124,7 +126,7 @@ def compute_number_of_stations(ESEC_avalanches, print = False):
     ## Loop in all events in ESEC
     for numero_event in tqdm(ESEC_avalanches["numero"], total=len(ESEC_avalanches)):
 
-        ## Load the inventory
+        ## Load the inventory of the event
         inventory = ESEC_avalanches["inventory"][numero_event]
 
         ## Initializes a list to count the number of stations per event
@@ -155,14 +157,14 @@ def compute_waveform_with_distance(trace, scale):
 
     Parameters
     ----------
-    trace : numpy.ndarray
+    trace : np.ndarray
         The seismic trace.
     scale : float
         Scaling factor for the waveform to control its vertical offset when plotting.
 
     Returns
     -------
-    numpy.ndarray
+    waveform : np.ndarray
         The scaled and normalized waveform data.
     """
     waveform = trace - np.mean(trace)     ## Center the waveform
@@ -174,28 +176,28 @@ def compute_waveform_with_distance(trace, scale):
 
 def create_detection_dataframe(ESEC_avalanches, event_index, trimmed_time_starttime, trimmed_time_endtime, distance_all_trace):
     """
-    Creates a DataFrame for detection results and visualizes detections.
+    Creates a dataframe for detection results and visualizes it.
 
     Parameters:
     -----------
-        ESEC_avalanches : pd.DataFrame 
-    DataFrame containing avalanche event data.
-        event_index : int
-    Index of the event to analyze.
-        trimmed_time_starttime : list
-    List of detection start times.
-        trimmed_time_endtime : list
-    List of detection end times.
-        distance_all_trace : list
-    List of distances for each trace.
+    ESEC_avalanches : pd.DataFrame 
+        The ESEC.
+    event_index : int
+        Index of the event to analyze.
+    trimmed_time_starttime : list
+        List of detection start times.
+    trimmed_time_endtime : list
+        List of detection end times.
+    distance_all_trace : list
+        List of distances for each trace.
     """
 
-    ## Create DataFrame with the start and end time of the detected method and the distance of the stations
+    ## Create a dataframe with the start and end time of the detection method and the distance of the stations
     df = pd.DataFrame({'start_time': trimmed_time_starttime, 'end_time': trimmed_time_endtime, 'distance': distance_all_trace})
     df = df.sort_values('distance') ## Sort by distance
-    df = df.reset_index(drop=True) ## Reset index
+    df = df.reset_index(drop=True)  ## Reset index
     df['detection'] = df['start_time'].apply(lambda x: False if np.isnan(x) else True) ## In a new column named "detection", add True if detection is possible. Add False if detection is not possible
-    df['duration'] = df['end_time'] - df['start_time'] ## Compute the duration of the event using the detected method
+    df['duration'] = df['end_time'] - df['start_time'] ## Compute the duration of the event using the detection method
 
     ## Extract the volume of the event
     volume = [ESEC_avalanches["volume"][event_index]]
@@ -225,24 +227,24 @@ def create_detection_dataframe(ESEC_avalanches, event_index, trimmed_time_startt
 
 def moyenne_glissante(f, shanon_index, ax, window_size = 40):
     """
-    Calculates and plots the moving average of the Shannon index over a specified window size.
+    Calculates and plots a moving average with a specified window size.
 
     Parameters:
     -----------
     f : np.array
-        The frequency values.
+        The frequency values (in that case).
     shanon_index : np.array
-        The Shannon index values corresponding to the frequencies.
+        The Shannon index values corresponding to the frequencies (in that case).
     ax : matplotlib.Axes
         The axis on which to plot the moving average.
     window_size : int
         The window size for calculating the moving average.
     """
 
-    ## Calculate the moving average of the Shannon index using convolution.
+    ## Calculate the moving average using convolution.
     moving_average = np.convolve(shanon_index, np.ones(window_size)/window_size, mode='valid')
 
-    ## Compute the difference between the original Shannon index length and the moving average.
+    ## Compute the difference between the original Shannon index length (in that case) and the moving average.
     diff = len(f[:len(shanon_index)]) - len(moving_average)
 
     ## Pad the moving average with NaN values to match the original length.
@@ -254,7 +256,7 @@ def moyenne_glissante(f, shanon_index, ax, window_size = 40):
 
 def merge_dataframes(dossier = "features/1_fitting/data", name = "curve_parameters*.csv", area_to_save = 'features/1_fitting/data/fitting_df.csv'):
     """
-    Merges multiple CSV files from a specified folder into a single DataFrame and saves the result to a CSV file.
+    Merges multiple CSV files from a specified folder into a single dataframe and saves the result to a CSV file.
 
     Parameters:
     -----------
@@ -263,24 +265,24 @@ def merge_dataframes(dossier = "features/1_fitting/data", name = "curve_paramete
     name : str
         The filename pattern for the CSV files to merge.
     area_to_save : str
-        The path where the merged dataFrame will be saved as a CSV file.
+        The path where the merged dataframe will be saved as a CSV file.
 
     Returns:
     --------
     dataframe_merged : pd.DataFrame
-        The merged DataFrame containing data from all the CSV files.
+        The merged dataframe containing data from all the CSV files.
     """
 
     ## Search for all CSV files in the specified directory matching the pattern 'name'
     fichiers_csv = glob.glob(os.path.join(dossier, name))
 
-    ## Read all the CSV files found into a list of DataFrames
+    ## Read all the CSV files found into a list of dataframes
     dataframes = [pd.read_csv(fichier) for fichier in fichiers_csv]
 
-    ## Concatenate all the DataFrames into a single DataFrame
+    ## Concatenate all the dataframes into a single dataframe
     dataframe_merged = pd.concat(dataframes, ignore_index=True)
 
-    ## Save the merged DataFrame
+    ## Save the merged dataframe
     dataframe_merged.to_csv(area_to_save, index=False)
 
     return dataframe_merged
@@ -302,7 +304,7 @@ def conversion_du_temps_du_catalogue(trace, start_time_string, add_time):
     Returns:
     --------
     start_time_event_shifted : float
-        The event start time in seconds, relative to the trace's start time, with the time shift applied.
+        The event start time in seconds with the time shift applied.
     """
     
     ## Parse the start_time_string into a datetime object using the specified format

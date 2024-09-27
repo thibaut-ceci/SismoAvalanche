@@ -1,5 +1,5 @@
 """
-Libraries to clean ESEC and associated datas.
+Cleaning data in ESEC
 
 This module contains functions to clean data from ESEC.
 """
@@ -15,7 +15,7 @@ tqdm.pandas()
 
 def events_without_digital_data(ESEC_avalanches):
     """
-    Function to remove the events with no digital data.
+    Remove the events with no digital data.
 
     Parameters:
     ------------
@@ -61,6 +61,7 @@ def events_without_pickle_file(ESEC_avalanches):
         The new ESEC without the events without pickle file.
     """
 
+    ## Loop over all events
     for numero_event in tqdm(ESEC_avalanches["numero"], total=len(ESEC_avalanches)):
 
         ## Check if events have pickle file
@@ -85,7 +86,7 @@ def events_without_pickle_file(ESEC_avalanches):
 
 def trace_with_a_frequency_below_of(a_frequency_below_of, ESEC_avalanches):
     """
-    Function to remove the traces with a frequency below of 20 Hz.
+    Function to remove traces with a frequency below of 20 Hz (for example).
 
     Parameters:
     ------------
@@ -97,13 +98,13 @@ def trace_with_a_frequency_below_of(a_frequency_below_of, ESEC_avalanches):
     Returns:
     ---------
     ESEC_avalanches : pandas.DataFrame
-        The ESEC without the removed events.
+        The ESEC without removed events.
     """
 
-    ## List to store events to be removed
+    ## List to store removed events
     events_to_remove = []
 
-    ## Check if all the traces in an event have a frequency below of 20 Hz
+    ## Check if all traces in an event have a frequency below of 20 Hz
     for numero_event in tqdm(ESEC_avalanches["numero"], total=len(ESEC_avalanches)):
 
         ## Load the event
@@ -120,17 +121,18 @@ def trace_with_a_frequency_below_of(a_frequency_below_of, ESEC_avalanches):
                 print("Trace " + str(numero_trace) + " has freq = " + str(fs))
                 traces_to_remove.append(numero_trace)
 
-
         print(f"Number of traces with a frequency below of {a_frequency_below_of} Hz : " + str(len(traces_to_remove)))
 
-        ## Remove traces marked for removal (in "numero_trace")
+        ## Remove traces marked for removal (in "traces_to_remove")
         for index in sorted(traces_to_remove, reverse=True):
             stream.pop(index)
             print("Trace " + str(index) + " deleted")
         
-        ## Write the new stream without the trace with a frequency below of 20 Hz. If an error occurs (like all the traces were deleted), the event is removed
+        ## Write the new stream without the traces with a frequency below of 20 Hz.
         try:
             stream.write(f"sismogrammes/{numero_event:03d}.pickle", format="PICKLE")
+
+        ## An error occurs if the stream is empty. So, the event is removed
         except ObsPyException:
             print("All traces were deleted in stream", str(numero_event))
             events_to_remove.append(numero_event)
@@ -141,8 +143,9 @@ def trace_with_a_frequency_below_of(a_frequency_below_of, ESEC_avalanches):
         print("End of stream", str(numero_event))
         print("")
 
-    ## Remove events from dataframe after the loop
+    ## Remove events from ESEC after the loop
     ESEC_avalanches = ESEC_avalanches[~ESEC_avalanches["numero"].isin(events_to_remove)]
+
     return ESEC_avalanches
     
 
@@ -175,7 +178,7 @@ def trace_without_metadata(ESEC_avalanches):
 
         print("Number of traces having no instrumental response : " + str(len(traces_to_remove)))
 
-        ## Reload the stream because all the traces are in displacement.
+        ## Reload the stream because all the traces are in displacement now.
         stream = obspy.read(f"sismogrammes/{numero_event:03d}.pickle", format="PICKLE")
 
         ## Remove traces marked for removal

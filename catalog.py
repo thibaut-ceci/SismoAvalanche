@@ -1,7 +1,7 @@
 """
 ESEC catalog management.
 
-This module contains functions to read, filter and display the ESEC catalog.
+This module contains functions to read, filter and display the ESEC.
 """
 
 import pickle
@@ -27,12 +27,12 @@ def load(path):
     Parameters :
     ------------
     path : str
-        The path to the pickle file to be opened.
+        The path to the pickle file.
 
     Returns : 
     ---------
     object
-        The Python object that was saved in the pickle file.
+        The pickle file (like the ESEC).
     """
     return pickle.load(open(path, "rb"))
 
@@ -113,7 +113,7 @@ def see_number_distribution(avalanches_select, ax, ylabel):
 
 def get_the_most_or_least_instrumented_avalanches(catalog, number, ascending=False):
     """
-    Returns a subset of avalanches sorted by the number of instrumented stations.
+    Returns a subset of ESEC sorted by the number of stations.
 
     Parameters:
     ------------
@@ -123,12 +123,12 @@ def get_the_most_or_least_instrumented_avalanches(catalog, number, ascending=Fal
         The number of avalanches in the catalog to return.
     ascending : bool
         If False, sorts the avalanches by 'Number of stations' in descending order to get the most instrumented.
-        If True, sorts the avalanches in ascending order to get the least instrumented.
+        If True, sorts the avalanches by 'Number of stations' in ascending order to get the least instrumented.
 
     Returns:
     ---------
     pandas.DataFrame
-        A DataFrame containing the 'number' most or least instrumented avalanches.
+        A subset of ESEC containing the 'number' most or least instrumented avalanches.
     """
     catalog.sort_values(by="Number of stations", ascending=ascending, inplace=True)
 

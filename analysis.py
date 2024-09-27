@@ -1,4 +1,9 @@
-"""Analyse seismic waveforms with ObsPy."""
+"""
+Analyse seismic waveforms with ObsPy.
+
+Many functions allow to filter and detect seismic signals from ESEC avalanches.
+The detection method is here.
+"""
 
 from datetime import timedelta
 import matplotlib.dates as mdates
@@ -20,7 +25,7 @@ def filter_stream(ESEC_avalanches, event_index, trace_index, freq_HP=9, freq_LP=
     Parameters
     ----------
     ESEC_avalanches : pandas.DataFrame
-        The ESEC
+        The ESEC.
     event_index : int
         The index of the event to filter.
     trace_index : int
@@ -70,18 +75,18 @@ def thresholds(data_start_detection):
 
     Parameters
     ----------
-    data_start_detection : numpy.ndarray
+    data_start_detection : np.ndarray
         Seismic signal data.
 
     Returns
     -------
     threshold_1 : float
-        The calculated noise threshold.
-    adjusted_rms : float
-        The adjusted RMS value after applying the noise threshold.
-    data_above_threshold_1 : numpy.ndarray
+        The noise threshold.
+    threshold_2 : float
+        The seismic signal threshold.
+    data_above_threshold_1 : np.ndarray
         Boolean array indicating which data points exceed the noise threshold.
-    data_above_threshold_2 : numpy.ndarray
+    data_above_threshold_2 : np.ndarray
         Boolean array indicating which data points exceed both the noise and signal thresholds.
     """
 
@@ -97,11 +102,9 @@ def thresholds(data_start_detection):
 
     ## Threshold 2 : the seismic signal
     data_above_threshold_2 = data_above_threshold_1 & (np.abs(data_start_detection) > data_rms)
+    threshold_2 = data_rms + 1.1 * threshold_1 ## Adjusted RMS
 
-    ## Adjusted RMS value
-    data_rms = data_rms + 1.1 * threshold_1
-
-    return threshold_1, data_rms, data_above_threshold_1, data_above_threshold_2
+    return threshold_1, threshold_2, data_above_threshold_1, data_above_threshold_2
 
 
 def detection_on_one_trace(trace, ESEC_avalanches, event_index, trace_index, add_start_time, add_end_time, detection_yes_or_no):
@@ -123,29 +126,32 @@ def detection_on_one_trace(trace, ESEC_avalanches, event_index, trace_index, add
         Additional time to add to the start time.
     add_end_time : float
         Additional time to add to the end time.
-    detection_yes_or_no : 
+    detection_yes_or_no : list
+        Store detections.
     
     Returns
     -------
-    time_start_detection : numpy.ndarray
+    time_start_detection : np.ndarray
         Time for the detection method.
-    data_start_detection : numpy.ndarray
+    data_start_detection : np.ndarray
         Data for the detection method.
-    trimmed_time : numpy.ndarray
-        Detected time.
-    trimmed_data : numpy.ndarray
+    trimmed_time : np.ndarray
+        Detected time from the seismic signal.
+    trimmed_data : np.ndarray
         Detected data from the seismic signal.
-    time_raw : numpy.ndarray
+    time_raw : np.ndarray
         Original time of the trace.
-    data_raw : numpy.ndarray
+    data_raw : np.ndarray
         Original data of the trace.
     upper_threshold : float
-        Upper threshold for detection.
+        Seismic signal threshold for detection.
     lower_threshold : float
-        Lower threshold for detection.
+        Noise threshold for detection.
+    detection_yes_or_no : list
+        Store detections.
     """
 
-    ### Step 1 : Trim the trace using the ESEC start and end times to refine the detection area
+    ### Step 1 : Trim the trace using the ESEC start and end times to define the detection area
 
     ## Extract information from the trace
     time_raw = trace.times()
@@ -162,7 +168,7 @@ def detection_on_one_trace(trace, ESEC_avalanches, event_index, trace_index, add
     start_time = distance / wavespeed + start_time_catalogue
     end_time = distance / wavespeed + end_time_catalogue
 
-    ## Create a mask to trim the trace
+    ## Trim the trace
     mask = (time_raw >= start_time) & (time_raw <= end_time)
     time_start_detection = time_raw[mask]
     data_start_detection = trace.data[mask]
@@ -187,7 +193,7 @@ def detection_on_one_trace(trace, ESEC_avalanches, event_index, trace_index, add
         print("Detection on trace", trace_index)
 
     except IndexError:
-        ## If the detection is not possible, an error occurs.
+        ## If detection is not possible, an error occurs.
         print("No detection on trace", trace_index)
         start_time = end_time = trimmed_time = trimmed_data = np.nan
         detection_yes_or_no.append("FALSE")
@@ -204,7 +210,7 @@ def detection_on_one_trace(trace, ESEC_avalanches, event_index, trace_index, add
         start_time = end_time = trimmed_time = trimmed_data = np.nan
         detection_yes_or_no[-1] = "FALSE"
 
-    ## Add condition if the lower threshold is upper the upper threshold
+    ## Add condition if the noise threshold is upper the seismic signal threshold
     if lower_threshold > upper_threshold:
         print(f"Noise threshold too high - no detection on trace {trace_index}.")
         trimmed_time = trimmed_data = upper_threshold = lower_threshold = start_time = end_time = np.nan
@@ -261,7 +267,7 @@ def detected_method_for_one_event(stream, ESEC_avalanches, event_index, label1):
             _, _, trimmed_time, trimmed_data, _, _, _, _, detection_yes_or_no = detection_on_one_trace(trace, ESEC_avalanches, event_index, index, -30, 10, detection_yes_or_no)
 
             try:
-                ## Check if five consecutive detections are "FALSE". If true, the detection has stopped
+                ## Check if five consecutive detections are "FALSE". If true, the detection stops
                 if len(detection_yes_or_no) >= 5 and all(d == "FALSE" for d in detection_yes_or_no[-5:]):
                     print("Detection stopped: 5 consecutive FALSE detections !")
                     detection_stopped = True
@@ -387,12 +393,12 @@ def detection_method_for_all_events(ESEC_avalanches, stream, event_index, events
             print("")
 
 
-        ## Create DataFrame with the start and end time of the detected method and the distance of the stations
+        ## Create a DataFrame with the start and end time of the detection method and the distance of the stations
         df = pd.DataFrame({'start_time': trimmed_time_starttime, 'end_time': trimmed_time_endtime, 'distance': distance_all_trace})
         df = df.sort_values('distance') ## Sort by distance
         df = df.reset_index(drop=True) ## Reset index
         df['detection'] = df['start_time'].apply(lambda x: False if np.isnan(x) else True) ## In a new column named "detection", add True if detection is possible. Add False if detection is not possible
-        df['duration'] = df['end_time'] - df['start_time'] ## Compute the duration of the event using the detected method
+        df['duration'] = df['end_time'] - df['start_time'] ## Compute the duration of the event using the detection method
         
         ## Extract the volume of the event
         volume = [ESEC_avalanches["volume"][event_index]]
@@ -423,9 +429,9 @@ def fit_line(frequencies, values):
 
     Parameters:
     ------------
-    frequencies : numpy.ndarray
+    frequencies : np.ndarray
         The frequency values for the PSD.
-    values : numpy.ndarray
+    values : np.ndarray
         The PSD values.
 
     Returns:
@@ -449,13 +455,13 @@ def find_split_frequency(frequencies, values, min_freq=2.0, max_freq=10.0):
     
     Parameters:
     ------------
-    frequencies : numpy.ndarray
+    frequencies : np.ndarray
         The array of frequencies.
-    values : numpy.ndarray
+    values : np.ndarray
         The array of PSD values corresponding to the frequencies.
-    min_freq : float, optional
+    min_freq : float
         The minimum frequency to search for the split.
-    max_freq : float, optional
+    max_freq : float
         The maximum frequency to search for the split.
 
     Returns:
@@ -484,11 +490,11 @@ def ajustement_de_segment(mask, frequencies_signal, psd_signal, ax, color='green
 
     Parameters:
     ------------
-    mask : numpy.ndarray
+    mask : np.ndarray
         Boolean mask array to filter.
-    frequencies_signal : numpy.ndarray
+    frequencies_signal : np.ndarray
         The full array of frequency values.
-    psd_signal : numpy.ndarray
+    psd_signal : np.ndarray
         The full array of PSD values corresponding to the frequencies.
     ax : matplotlib axis
         The axis object on which to plot the adjusted line.
@@ -501,13 +507,13 @@ def ajustement_de_segment(mask, frequencies_signal, psd_signal, ax, color='green
 
     Returns:
     ---------
-    freq : numpy.ndarray
+    freq : np.ndarray
         The filtered values.
     slope : float
         The slope of the fitted line.
     intercept : float
         The intercept of the fitted line
-    psd : numpy.ndarray
+    psd : np.ndarray
         The PSD values
     """
 
@@ -540,20 +546,20 @@ def plot_spectre(trace, ESEC_avalanches, trimmed_data, trace_index, event_index,
         The seismic trace containing the signal data to be analyzed.
     ESEC_avalanches : pandas.DataFrame
         The ESEC.
-    trimmed_data : numpy.ndarray
+    trimmed_data : np.ndarray
         The detected signal data.
     trace_index : int
         Index of the seismic trace.
     event_index : int
         Index of the avalanche event.
-    conserv_result : bool, optional
+    conserv_result : bool
         If True, saves the fitting parameters in a CSV file and the plots.
     """
 
     ## Initialize list to store results
     curve_params = []
 
-    ## Welch parameters
+    ## Welch method parameters
     segment_duration = 20
     noverlap = 12
     nperseg = int(segment_duration * trace.stats.sampling_rate)
@@ -595,12 +601,12 @@ def plot_spectre(trace, ESEC_avalanches, trimmed_data, trace_index, event_index,
         df = pd.DataFrame(curve_params)
         df.to_csv(f'features/1_fitting/data/curve_parameters_{event_index}.csv', index=False)
         
-    plt.loglog(frequencies_signal, psd_signal, color="C1", label="Spectre du signal sismique détecté")
+    plt.loglog(frequencies_signal, psd_signal, color="C1", label="Spectrum of the detected seismic signal")
     plt.legend()
     plt.margins(x=0)
     plt.xscale("log")
     plt.xlabel('Fréquences (Hz)')
-    plt.ylabel(r'Densité Spectrale de Puissance du déplacement ($\mathrm{\frac{m^{2}}{Hz}}$)')
+    plt.ylabel(r'Power Spectral Density of Displacement($\mathrm{\frac{m^{2}}{Hz}}$)')
 
     figures.save(f"features/1_fitting/pictures/fitting_on_trace_{trace_index}_in_event_{event_index}.pdf")
 

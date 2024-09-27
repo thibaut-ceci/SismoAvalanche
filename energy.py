@@ -1,7 +1,7 @@
 """
 ESEC energy calculate
 
-Library with several functions to calculate avalanche energy
+Library with several functions to calculate avalanches energy
 """
 
 import matplotlib.pyplot as plt
@@ -33,7 +33,7 @@ def next2pow(x):
 
 def spectres(trace):
     """
-    Computes the spectrogram and energy of a seismic trace over a specific frequency band.
+    Computes the spectrogram and energy envelope of a seismic trace over a specific frequency band.
 
     Write by Francesco Biagioli (biagioli@ipgp.fr) and Thibaut Céci
     
@@ -53,19 +53,19 @@ def spectres(trace):
     time_at_max_energy : float
         The time at which the maximum energy is observed.
     energy_max_index : int
-        The index of the maximum energy value in the time series.
+        The index of the maximum energy value.
     """
     
-    ## Parameters of the trace
+    ## Trace parameters
     distance = trace.stats.distance ## Distance of the station from the event source
     fs = trace.stats.sampling_rate  ## Sampling rate of the trace
     data = trace.data               ## The seismic amplitude data of the trace
     
-    ## Set window length for the spectrogram analysis by the Welch method
+    ## Set window length for the spectrogram analysis
     window_len = 20
     nperseg = int(window_len * fs)
 
-    ## Compute the spectrogram by the Welch method
+    ## Compute the spectrogram
     frequencies, times, Sxx = spectrogram(data, fs=fs, nperseg=nperseg, noverlap=nperseg * 0.9, nfft=next2pow(nperseg), scaling="density", mode="psd")
 
     ## Compute the energy between a frequency band of interest
@@ -126,7 +126,7 @@ def threshold(times, energy):
 
 def plot(times, energy, distance, threshold_energy, sub_times, sub_energy):
     """
-    Display the energy of the trace.
+    Display the energy envelope of the trace.
 
     Parameters:
     ------------
@@ -137,24 +137,23 @@ def plot(times, energy, distance, threshold_energy, sub_times, sub_energy):
     distance : float
         Distance of the seismic station to the event.
     threshold_energy : float
-        The energy threshold value used for detection.
+        The threshold value used for detection.
     sub_times : np.array
         Time points within the thresholded energy range.
     sub_energy : np.array
         Energy values within the thresholded range.
     """
 
-    ## Plot the full spectral energy curve over time
+    ## Plot the full energy envelope
     plt.plot(times, energy, label="Distance : " + str(np.round(distance)) + " km", alpha=0.7)
 
     ## Plot the threshold
     plt.plot([times[0], times[-1]], [threshold_energy, threshold_energy], 'g--', label="Threshold")
 
-    ## Plot the portion of the energy curve detected by the threshold
+    ## Plot the portion of the energy envelope detected by the threshold
     plt.plot(sub_times, sub_energy, color="red")
     
-    ## Plot parameters
-    plt.xlabel("Temps (s)")
+    plt.xlabel("Time (s)")
     plt.ylabel("Energy (dB)")
     plt.legend(fontsize=9, bbox_to_anchor=(1.01, 1), loc='upper left')
     plt.show()
@@ -162,7 +161,7 @@ def plot(times, energy, distance, threshold_energy, sub_times, sub_energy):
 
 def compute(ESEC_avalanches, trace, event_index):
     """
-    Compute energy features for seismic trace in each event and save the results in dataframe.
+    Compute energy features of the first seismic trace for each event and save the results in a dataframe.
 
     Parameters:
     ------------
@@ -177,10 +176,10 @@ def compute(ESEC_avalanches, trace, event_index):
     ## Calculate spectrograms and energy for the trace
     distance, times, energy, time_at_max_energy, energy_max_index = spectres(trace)
 
-    ## Apply a threshold to detect significant energy
+    ## Apply a threshold to detect the energy envelope
     sub_times, sub_energy, first_index, _, threshold_energy = threshold(times, energy)
 
-    ## Plot the energy
+    ## Plot the energy envelope
     plot(times, energy, distance, threshold_energy, sub_times, sub_energy)
 
     ## Extract and save features
@@ -193,17 +192,3 @@ def compute(ESEC_avalanches, trace, event_index):
                                     'Impulsion': [(energy[energy_max_index] - energy[first_index]) / (time_at_max_energy - times[first_index])]})
     
     dataframe_event.to_csv(f'features/2_energie/data/dataframe_event_{event_index}.csv', index=False)
-
-
-
- 
-
- 
-
-    
-
-    
-
-
-
-
