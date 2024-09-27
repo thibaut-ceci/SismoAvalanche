@@ -12,6 +12,7 @@ import numpy as np
 import os
 import pandas as pd
 from scipy.stats import t
+import warnings
 
 from tqdm.notebook import tqdm
 tqdm.pandas()
@@ -35,6 +36,8 @@ def remove_outliers_in_catalog(catalog, catalog_column, subset):
     pandas.DataFrame
         The new ESEC with outliers removed.
     """
+
+    warnings.filterwarnings("ignore", category=UserWarning)
 
     ## Calculate the first and third quartiles
     Q1 = catalog_column.quantile(0.25)
