@@ -1,19 +1,18 @@
-# Python __pycache__ directories
+## Python __pycache__ directories
 __pycache__/
 
-# Python __pycache__ in all directories
+## Python __pycache__ in all directories
 **/__pycache__/
 
-# Python *.pyc files
+## Python *.pyc files
 *.pyc
 
-# ignore temp
+## ignore save directories
 temp/
-
-sismogrammes/
-
-sismogrammes/sismogrammes_save/
-
 mis_de_cote/
-
 aside/
+catalog/save/
+
+## ignore datas
+sismogrammes/
+sismogrammes/sismogrammes_save/
