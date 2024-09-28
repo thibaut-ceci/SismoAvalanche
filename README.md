@@ -1,8 +1,8 @@
 # What is "SismoAvalanche"?
 
 SismoAvalanche is a project with two objectives :
-- 1. Try to find the morphometric parameters of avalanches using the seismic signal
-- 2. Improve the understanding of avalanche collapse dynamics by exploring a new field : avalanche entropy
+- Try to find the morphometric parameters of avalanches using the seismic signal
+- Improve the understanding of avalanche collapse dynamics by exploring a new field : avalanche entropy
 
 The report (in french) of this study is available here and it is advisable to read it before consulting the codes : https://mega.nz/fm/cNVHSLoa
 
