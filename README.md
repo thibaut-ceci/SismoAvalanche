@@ -11,7 +11,6 @@ We will use the database ESEC : https://ds.iris.edu/spud/esec
 ## Abstract of this study :
 Understanding the seismic characteristics of landslides is crucial for assessing their impact and mitigating risks. This study focuses on using seismic signals to deduce morphometric parameters (volume, height of fall and runout) of dense granular flows, such as debris, snow, ice, or rock avalanches. Seismic data from 30 cataloged avalanches in the Exotic Seismic Events Catalog (ESEC) are downloaded and analyzed to extract and compare twelve characteristics from the power spectrum, energy envelope and entropy spectrum of these events. The results reveal interesting links, proportional relationships and correlations : the morphometric parameters of avalanches show proportional relationships and the characteristics of the energy envelope allow for an approximate estimation of the volume of these events. However, the characteristics based on entropy did not show significant correlations or links with other characteristics. This is partly caused by several issues related to the data provided in the ESEC and the detection method that leads to the loss of many events constraining the study to a reduced sample of avalanches. With more events, links or correlations could be observed. Furthering this study could improve the understanding of dense granular flows.
 
-
 # Explanation of the codes :
 - 00_read_esec.ipynb : First, we will read the ESEC and only keep the avalanches (because in ESEC, there are a lot of types of landslides, not only avalanches).
 - 01_clean_esec.ipynb : Then, we will remove unnecessary columns in the new ESEC and keep only events with good measurements.
@@ -29,7 +28,7 @@ Understanding the seismic characteristics of landslides is crucial for assessing
 - 13_features_comparison : All the features computed in this study were merged into a dataframe.
 - 14_scatter_matrix : A scatter matrix was created to look for correlations or links between the features.
 
-# A lot of librairies developped in this studies were availables :
+# Many libraries developed in this study were available :
 - analysis.py : Analyses seismic waveforms with ObsPy. The detection method is here.
 - catalog.py : ESEC catalog management.
 - cleaning.py : Libraries to clean ESEC and associated datas (pickle files).
